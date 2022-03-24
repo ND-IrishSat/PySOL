@@ -23,6 +23,7 @@
 import numpy as np
 import time
 import pyshtools.legendre as legendre
+import matplotlib.pyplot as plt
 
 class WMMCoefficientLoader():
     ''' Class to load and hold model coefficients from reference epoch the WMM geomagnetic model for nth degree  
@@ -40,7 +41,7 @@ class WMMCoefficientLoader():
         self.degree = degree
         self.length = 0
         
-        for i in range(1, degree+1):
+        for i in np.arange(1, degree+1, 1):
             self.length += i + 1
         
         # Initialize gauss coefficients as empty arrays
@@ -156,16 +157,16 @@ class WMM():
         self.f = 1.0/self.reciprocal_f
         self.e_earth = np.sqrt(self.f*(2-self.f))
             
-    def calc_LLA2GCC(self, LLA, t, degrees=False):
+    def calc_LLA2GCC(self, lat_gd, lon, h_ellp, t, degrees=False):
         ''' Method to convert inputted geodetic latitude, longtitude, altitude into geocentric spherical coordinates,
         which will be stored inside the self of the model
         
         Args:
-            LLA (numpy.array): A numpy array where the first element is the geodetic latitude, the second
-            element is the longitude, and the third is the height above the ellipsoid. Height/altitude should be
-            in meters
-            
-            t (number): time, given in decimal years
+            lat_gd (np.array): array holding the geodesic latitude associated with a state
+            lon (np.array): array holding the longtitude associated with a state
+            h_ellp (np.array): array holding the estimated heights above the ellipsoid in m
+            t (np.array): array of times associated with an array of states, given in decimal years
+            degrees (bool): kwarg, if True, converts lat_gd and lon to rads
             
         The geocentric spherical coordinates is saved as an np array, where the first element is the goecentric latitude,
         the second is longitude, and the third is geocentric radius. The geodetic coorindates are also saved into
@@ -173,11 +174,6 @@ class WMM():
         
         NOTE: DO NOT USE THIS YOURSELF
         '''
-        
-        # Store LLA vector to temporary variables
-        lat_gd = LLA[0] 
-        lon = LLA[1] # Not converted to radians as not used in calculations
-        h_ellp = LLA[2]
         
         if degrees:
             lat_gd *= np.pi/180.0
@@ -198,11 +194,17 @@ class WMM():
         # Get geocentric latitude
         lat_gc = np.arcsin(z/r)
         
-        
         # Store geodesic vector, geodetic vector, as well as corresponding time stamp
         self.GDC = np.array([lat_gd, lon, h_ellp])
         self.GCC = np.array([lat_gc, lon, r])
         self.t = t
+        
+        # Calculate the array of Schmidt semi normalized associated legendre functions for given latitude and given order    
+        self.legendre = []
+        for i in np.arange(0, self.t.shape[0], 1):
+            self.legendre.append(legendre.PlmSchmidt(self.degree+1, np.sin(self.GCC[0, i])))
+        self.legendre = np.array(self.legendre)    
+        
         
     def determine_coefficients(self):
         '''Determine gauss coefficients for desired time using equations:
@@ -234,36 +236,43 @@ class WMM():
         for i in range(self.degree):
             
             # Set the m number of coefficients for a given order n
-            g_coefs = np.array(self.coef.g_[i])
-            h_coefs = np.array(self.coef.h_[i])
+            g_coefs = np.ones((self.t.shape[0], 1)) @ [np.array([self.coef.g_[i]])]
+            h_coefs = np.ones((self.t.shape[0], 1)) @ [np.array([self.coef.h_[i]])]
             
             # Pull the rate of change for the m coefficients for a given order n
+            #g_coefs_dot = np.ones((self.t.shape[0], 1)) @ [np.array(self.coef.gdot_[i])]
+            #h_coefs_dot = np.ones((self.t.shape[0], 1)) @ [np.array(self.coef.hdot_[i])]
             g_coefs_dot = np.array(self.coef.gdot_[i])
             h_coefs_dot = np.array(self.coef.hdot_[i])
             
             # Take into account time dependency based on difference between given time and epoch time of the model, which is 2020.0 in decimal years
-            g_coefs += (self.t - self.t_0)*g_coefs_dot
-            h_coefs += (self.t - self.t_0)*h_coefs_dot
+            # Array of time difference dt = [t1, t2, t3] tensor product with g_coefs_dot.
+            # Say, if g_coefs_dot = [g1, g2], does tensor product so that
+            # dt (x) g_coefs_dot = [[t1*g1, t1*g2],
+            #                       [t2*g1, t2*g2],
+            #                       [t3*g1, t3*g2]]
+            dt = np.array(self.t-self.t_0*np.ones(self.t.shape[0]))
+            g_coefs += np.tensordot(dt, g_coefs_dot, axes=0)
+            h_coefs += np.tensordot(dt, h_coefs_dot, axes=0)
             
             # Append to the list 
-            self.g_t.append(g_coefs)
-            self.h_t.append(h_coefs)
-            self.g_dot_t.append(g_coefs_dot)
-            self.h_dot_t.append(h_coefs_dot)
+            self.g_t.append(g_coefs[0])
+            self.h_t.append(h_coefs[0])
+            self.g_dot_t.append(g_coefs_dot[0])
+            self.h_dot_t.append(h_coefs_dot[0])
             
-        # Calculate the array of Schmidt semi normalized associated legendre functions for given latitude and given order    
-        self.legendre = legendre.PlmSchmidt(self.degree+1, np.sin(self.GCC[0]))
-        
                   
-    def calc_gcc_components(self, LLA, t, degrees=False):
+    def calc_gcc_components(self, lon_gd, lat, h_ellp, t, degrees=False):
         ''' Determine the field vector components X', Y', and Z' in geocentric coordinates, save to model
         and also output:
         
         Args:
-            LLA (np.array): geodetic coordinates, first element is geodetic latitude, second element is longitude,
-            and third element is height above ellipsoid
-            t (number): Associated time of coordinates in decimal years, where t = 2020.0 refers to the year 2020
-            degrees (bool): Whether or not inputted LLA coordinates are in degrees or radians. True for degrees
+        Args:
+            lat_gd (np.array): array holding the geodesic latitude associated with a state
+            lon (np.array): array holding the longtitude associated with a state
+            h_ellp (np.array): array holding the estimated heights above the ellipsoid in m
+            t (np.array): array of times associated with an array of states, given in decimal years
+            degrees (bool): kwarg, if True, converts lat_gd and lon to rads
             
         Out:
             B_gcc (np.array): geocentric magnetic field vector [X', Y', Z']
@@ -271,7 +280,7 @@ class WMM():
         
         # Convert inputted geodetic latitude, longtitude, altitude coordinates into spherical geocentric coordinates
         # of geocentric latitude, longtitude, and radius from center
-        self.calc_LLA2GCC(LLA, t, degrees)
+        self.calc_LLA2GCC(lon_gd, lat, h_ellp, t, degrees)
         self.determine_coefficients()
         
         # Intermediate values, pulling lon, lat, r, and other values from self for better readability
@@ -300,24 +309,22 @@ class WMM():
             
                 # Hold Gaussian coefficients in intermediate values for convenience and to not access arrays
                 # like 20 times :)
-                g_t = self.g_t[n-1][m] # We do n-1, but m because n is counted from 1 but m is counted from 0 for math purposes
-                h_t = self.h_t[n-1][m]
-                g_t_dot = self.g_dot_t[n-1][m]
-                h_t_dot = self.h_dot_t[n-1][m]
-               
-                # SSNA Legrende function of sin(latitude) with degree being n and order being m
-                Lp_mn = self.legendre[int(n*(n+1)/2 + m)]                
+                g_t = self.g_t[n-1][:, m] # We do n-1, but m because n is counted from 1 but m is counted from 0 for math purposes
+                h_t = self.h_t[n-1][:, m]
 
+                # SSNA Legrende function of sin(latitude) with degree being n and order being m
+                Lp_mn = self.legendre[:, int(n*(n+1)/2 + m)]                
+               
                 # SSNA Legrende function of sin(latitude) with degree being n+1 and order being m
-                Lp_mn1 = self.legendre[int((n+1)*(n+2)/2 + m)]
-                
+                Lp_mn1 = self.legendre[:, int((n+1)*(n+2)/2 + m)]
+
                 # Derivative of SSNA Legrende function with respect to latitude
-                Lp_derivative =  ((n+1)*np.tan(lat) * Lp_mn) - np.sqrt((n+1)**2 - m**2) * (1/np.cos(lat)) * Lp_mn1
+                Lp_derivative =  ( np.multiply(Lp_mn, (n+1)*np.tan(lat)) ) -  np.sqrt((n+1)**2 - m**2) * np.multiply(Lp_mn1, (1/np.cos(lat)))
 
                 # Sump up over m
-                B_x_n += (g_t * np.cos(m*lon) + h_t*np.sin(m*lon)) * Lp_derivative
-                B_y_n += m*(g_t * np.sin(m*lon) - h_t*np.cos(m*lon)) * Lp_mn
-                B_z_n += (g_t * np.cos(m*lon) + h_t*np.sin(m*lon)) * Lp_mn
+                B_x_n += np.multiply((np.multiply(g_t, np.cos(m*lon)) + np.multiply(h_t, np.sin(m*lon))), Lp_derivative)
+                B_y_n += m*np.multiply((np.multiply(g_t, np.sin(m*lon)) - np.multiply(h_t, np.cos(m*lon))), Lp_mn)
+                B_z_n += np.multiply((np.multiply(g_t, np.cos(m*lon)) + np.multiply(h_t, np.sin(m*lon))), Lp_mn)
                 
                 
             # Multiply with factor outside sum over m
@@ -346,6 +353,16 @@ class WMM():
         
         # Save B field in elliptical reference frame
         self.Bfield_ellip = np.array([B_x_ellip, B_y_ellip, B_z_ellip])
+     
+    def permute_coordinates(self):
+        ''' Function to permute coordinate arrays stored in self so that number of points is axis 0 and orthogonal
+        dimension is across axis 1
+        '''
+        
+        self.GCBfield = np.transpose(self.GCBfield)
+        self.Bfield_ellip = np.transpose(self.Bfield_ellip)
+        self.GDC = np.transpose(self.GDC)
+        self.GCC = np.transpose(self.GCC)
         
     def get_Bfield(self):
         ''' Function to return the B field components in the ellipsoidal reference frame '''
@@ -353,24 +370,19 @@ class WMM():
        
 # Testing WMM model
 if __name__ == "__main__":
-
-    time1 = time.time()
-    ## Test case of model
-    n = 12
-    WMM_model = WMM(n, 'WMMcoef1.csv')
-    time2 = time.time()
-    print(f'Time to create model: {time2-time1}\n')
     
-    # Test example
-    lat = -80.0 # latitude
-    lon = 240.0 # longitude
-    h = 100000.0 # altitude in m
-    t = 2022.5 # year
+    num = 1_000_000
+    lat = -80.0*np.ones(num)
+    lon1 = 240.0*np.ones(num)
     
-    # Test calculation
-    print(f'Computing for latitude = {lat}, longitude = {lon}, altitude = {h} m: ')
+    h = 100000*np.ones(num)
+    t = 2022.5*np.ones(num)
+    
     time1 = time.time()
-    WMM_model.calc_gcc_components(np.array([lat, lon, h]), t, degrees=True)
+    print(f'Calculating B field over {num} number of points at given time')
+    wmm_model = WMM(12, 'WMMcoef.csv')
+    wmm_model.calc_gcc_components(lat, lon1, h, t, degrees=True)
+    Bfield1 = wmm_model.get_Bfield()
     time2 = time.time()
-    print(f'Time to compute: {time2-time1}')
-    print(WMM_model.get_Bfield())
+    print(f'Bfield: {Bfield1}')
+    print(f'Calculated {num} number of times in {time2-time1} seconds')
