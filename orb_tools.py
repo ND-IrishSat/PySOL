@@ -5,11 +5,16 @@
 
 
 
+from re import M, S
 import scipy as sci
 import numpy as np
 
+
 import orb_tools as ot
 import constants
+import datetime as dt
+
+import astropy.time as astro_time
 
 
 class State_Matrix():
@@ -38,7 +43,7 @@ class State_Matrix():
         self.R = np.array([R])
         self.V = np.array([np.linalg.norm(self.V_)])
         
-        self.h = np.array([R - self.Re])
+        self.H = np.array([R - self.Re])
 
         # Set component ECI frame attrs
         self.X =  STATES[:, 0]
@@ -50,15 +55,21 @@ class State_Matrix():
 
         # Set UTC times
         self.times = np.array(TIMES)
+        self.times_jd = np.array(astro_time.Time(TIMES).jd)
 
         # Setting non-ECI frame attrs
         self.OE_ = np.zeros((len(self.S_), 6))
         self.RADEC = np.zeros((len(self.S_), 2))
+        self.LALN = np.zeros((len(self.S_), 2))
+        self.R_ECEF = np.zeros((len(self.S_), 3))
         for i, S_ in enumerate(self.S_):
             self.OE_[i, :] = ot.calc_RV2OE(S_, verbose = False)
             self.RADEC[i, :] = ot.calc_R2RADEC(self.R_[i], verbose = False)
+            self.LALN[i, :] = ot.calc_LALN(self.R_[i], self.times[i])
+            self.R_ECEF[i, :] = ot.calc_ECEF(self.R_[i], self.times[i])
 
-    def append_states(self, new_STATES):
+
+    def append_states(self, new_STATES, new_TIMES):
 
         self.S_ = np.concatenate((self.S_, new_STATES))
 
@@ -67,12 +78,11 @@ class State_Matrix():
 
         R = np.linalg.norm(new_STATES[:, 0:3], axis = 1)
         V = np.linalg.norm(new_STATES[:, 3:6], axis = 1)
-        new_h = R - self.Re
+        new_H = R - self.Re
         self.R = np.concatenate((self.R, R))
         self.V = np.concatenate((self.V, V))
 
-        self.h = np.concatenate((self.h, new_h))
-
+        self.H = np.concatenate((self.H, new_H))
         # Set component ECI frame attrs
         self.X =  np.concatenate((self.X, new_STATES[:, 0]))
         self.Y =  np.concatenate((self.Y, new_STATES[:, 1]))
@@ -84,16 +94,31 @@ class State_Matrix():
         # Setting non-ECI frame attrs
         new_OE = np.zeros((len(new_STATES), 6))
         new_RADEC = np.zeros((len(new_STATES), 2))
+        new_LALN = np.zeros((len(new_STATES), 2))
+        new_R_ECEF = np.zeros((len(new_STATES), 3))
         for i, S_ in enumerate(new_STATES):
             new_OE[i, :] = ot.calc_RV2OE(S_, verbose = False)
             new_RADEC[i, :] = ot.calc_R2RADEC(S_[0:3], verbose = False)
+            
+            new_LALN[i, :] = ot.calc_LALN(self.R_[i], new_TIMES[i])
+            new_R_ECEF[i, :] = ot.calc_ECEF(self.R_[i], new_TIMES[i])
+
+            # print('RADEC', new_RADEC[i, :])
+            # print('LALN', new_LALN[i, :])
+            # print('Time', new_TIMES[i])
+            # print()
 
         self.RADEC = np.concatenate((self.RADEC, new_RADEC))
+        self.OE_ = np.concatenate((self.OE_, new_OE))
+        self.RADEC = np.concatenate((self.RADEC, new_RADEC))
+        self.LALN = np.concatenate((self.LALN, new_LALN))
+        self.R_ECEF = np.concatenate((self.R_ECEF, new_R_ECEF))
 
     def append_times(self, new_TIMES):
 
         # Set UTC times
         self.times = np.concatenate((self.times, new_TIMES))
+        self.times_jd = np.concatenate((self.times_jd, astro_time.Time(new_TIMES).jd))
 
     def to_OE(self, verbose = False):
 
@@ -103,13 +128,15 @@ class State_Matrix():
 
         return self.RADEC
 
-    def to_ECEF(self, verbose):
+    def to_ECEF(self, verbose = False):
 
-        return
+        return self.R_ECEF
     
-    def to_LALN(self, verbose):
+    def to_LALN(self, verbose = False):
 
-        return
+        LALN = self.LALN
+
+        return LALN
 
 
 class OE_array():
@@ -321,6 +348,18 @@ def calc_OE2RV(OE_array, verbose = False):
 
     return S
 
+# def calc_RADEC2LALO(RA, DEC, TIME):
+#     """
+#         calc_RADEC2LALO - from RA and Dec and time, calculaes the lattitude 
+#             and longitude 
+    
+#     """
+
+#     LA = DEC
+
+#     # Get sideral time of GWE
+#     TH0 = 
+
 
 def calc_R2RADEC(r_, verbose):
     """
@@ -354,6 +393,87 @@ def calc_R2RADEC(r_, verbose):
     RA_deg = np.rad2deg(RA)
 
     return RA_deg, Dec_deg 
+
+
+def calc_th_0(time):
+    """
+    
+    """
+
+    y = time.year
+    m = time.month
+    d = time.day
+    
+
+    #J_0 = 367*y - np.floor( ( 7*( y + np.double((m+9)/12)) )/4 ) + np.double(275*m/9) + d + 1_721_013.5
+
+    hour = time.hour
+    minute = time.minute
+    second = time.second
+    microsecond = time.microsecond
+
+    UT = hour + minute/60 + second/3600 + microsecond/(3600*1e6)
+
+    ### Julian Date ###
+    JD = astro_time.Time(time).jd
+
+    ### Julian date at 0 UTC of this day
+    J_0 = JD - UT/24
+    T_0 = (J_0 - 2_451_545)/36_525
+
+    th_G0_deg = 100.4606184 + 36_000.77004*T_0 + 0.000387933*T_0**2 - 2.5831e-8*T_0**3
+
+    th_G0_deg_360 = th_G0_deg - np.floor(th_G0_deg/360)*360
+
+    th_G_deg = th_G0_deg_360  + 360.98564724*(UT/24)
+
+    return th_G_deg
+
+def calc_LALN(r_, time):
+    """
+    
+    
+    """
+
+    RA_deg, Dec_deg = calc_R2RADEC(r_, verbose = False)
+
+    th_0 = calc_th_0(time)
+
+    LA = Dec_deg
+    LN = RA_deg - th_0
+    if LN < -180:
+        LN += 360
+
+    return LA, LN
+
+def calc_h(r_):
+    """
+    
+    
+    """
+    h = np.linalg.norm(r_) - constants.R_E
+
+    return h
+
+
+def calc_ECEF(r_, time):
+    """
+    
+    
+    """
+
+    LA, LN = calc_LALN(r_, time)
+    r = np.linalg.norm(r_)
+
+    LA_rad = np.deg2rad(LA)
+    LN_rad = np.rad2deg(LN)
+
+    r_ECEF = r*np.array([np.cos(LA_rad)*np.cos(LN_rad), np.cos(LA_rad)*np.sin(LN_rad), np.sin(LA_rad)])
+
+    return r_ECEF
+
+
+
 
 def Rotate_Z(psi):
     """
@@ -396,14 +516,27 @@ def Rotate_X(psi):
     return R_X
 
 
+def dt_to_dec(time):
+    """Convert a datetime to decimal year."""
+
+    year_start = dt.datetime(time.year, 1, 1)
+    year_end = year_start.replace(year=time.year+1)
+    return time.year + ((time - year_start).total_seconds() /  # seconds so far
+        float((year_end - year_start).total_seconds()))  # seconds in year
+
+
 if __name__ == '__main__':
+
+    time = dt.datetime(2004, 3, 3, 4, 30, 00)
+
+    print(calc_th_0(time))
     
 
-    r_ = np.array([-6045, -3490, 2500])
-    v_ = np.array([-3.457, 6.618, 2.533])
-    S_ = np.concatenate((r_, v_))
+    # r_ = np.array([-6045, -3490, 2500])
+    # v_ = np.array([-3.457, 6.618, 2.533])
+    # S_ = np.concatenate((r_, v_))
 
-    OE_ = calc_RV2OE(S_, verbose=True)
-    S_ =calc_OE2RV(OE_, verbose = True)
+    # OE_ = calc_RV2OE(S_, verbose=True)
+    # S_ =calc_OE2RV(OE_, verbose = True)
 
     

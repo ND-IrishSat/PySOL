@@ -49,9 +49,26 @@ class Spacecraft():
             print('-'*l)
             print('-'*l)
 
-    def set_states(self, states):
 
-        self.state_mat.append_states(new_STATES= states)
+    def calc_B(self, mag_model):
+
+        LALNs = self.state_mat.to_LALN().copy()
+        Hs = self.state_mat.H
+
+        times = self.state_mat.times
+
+        time_dys = np.zeros_like(times)
+        for i, time in enumerate(times):
+            time_dy = ot.dt_to_dec(time)
+            time_dys[i] = time_dy
+
+        mag_model.calc_gcc_components(LALNs[:, 0], LALNs[:, 1], Hs, time_dys, degrees = True)
+
+        self.B_ = mag_model.get_Bfield()
+
+    def set_states(self, states, times):
+
+        self.state_mat.append_states(new_STATES= states, new_TIMES= times)
 
 
     def set_times(self, times):
@@ -94,6 +111,8 @@ class Spacecraft():
             print('v = [{:5.4f}, {:5.4f}, {:5.4f}] km/s'.format(vx, vy, vz))
 
         return RV
+
+    
 
 
 if __name__ == '__main__':
