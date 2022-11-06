@@ -514,19 +514,19 @@ if __name__ == '__main__':
 
     # sim.calc_B_field()
 
-    #sim.save_sim('filename')
+    # sim.save_sim('filename')
 
-    # sim.plot_orbit(lims = [10_000, 10_000, 10_000])
+    sim.plot_orbit(lims = [10_000, 10_000, 10_000])
 
     sim.calc_B()
     sim.save_sim(file_name = 'test')
 
-    # sim.plot_LALN()
-    # sim.plot_B()
+    sim.plot_LALN()
+    sim.plot_B()
 
-    # sim.plot_RADEC()
+    sim.plot_RADEC()
 
-    #sim.plot_XYZ()
+    sim.plot_XYZ()
 
     plt.show()
 

@@ -5,7 +5,7 @@ run_sim.py  --
 """
 
 import csv
-import numba
+#import numba
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.animation as animation
@@ -78,7 +78,7 @@ class OAT:
         ax.plot(K[:, 0], K[:, 1], K[:, 2], color = 'black')
 
         last_frame = i*speed
-        ax.plot(self.X, self.Y, self.Z, color = 'goldenrod', lw = 1, )
+        #ax.plot(self.X, self.Y, self.Z, color = 'goldenrod', lw = 1, )
         ax.plot(self.X[0:last_frame], self.Y[0:last_frame], self.Z[0:last_frame], 
             color = 'navy', lw = 5)
         ax.scatter(self.X[last_frame], self.Y[last_frame], self.Z[last_frame], s = 100, 

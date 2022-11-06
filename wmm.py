@@ -23,9 +23,10 @@
 from xml.sax.handler import DTDHandler
 import numpy as np
 import time
-import pyshtools.legendre as legendre
+#import pyshtools.legendre as legendre
 import matplotlib.pyplot as plt
 
+from legendre import ssn_lpmv
 class WMMCoefficientLoader():
     ''' Class to load and hold model coefficients from reference epoch the WMM geomagnetic model for nth degree  
     model
@@ -203,7 +204,8 @@ class WMM():
         # Calculate the array of Schmidt semi normalized associated legendre functions for given latitude and given order    
         self.legendre = []
         for i in np.arange(0, self.t.shape[0], 1):
-            self.legendre.append(legendre.PlmSchmidt(self.degree+1, np.sin(self.GCC[0, i])))
+            self.legendre.append(ssn_lpmv(self.degree+1, np.sin(self.GCC[0, i])))
+            #self.legendre.append(legendre.PlmSchmidt(self.degree+1, np.sin(self.GCC[0, i])))
         self.legendre = np.array(self.legendre)    
         
         
