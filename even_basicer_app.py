@@ -19,6 +19,8 @@ import time
 
 from wmm import WMM
 
+print("at least this prints")
+
 countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -94,6 +96,7 @@ step_size = 50
 )'''
 
 fig1 = px.line_geo(lat=oat.LALN[:,0], lon=oat.LALN[:,1])
+#fig1 = px.scatter_geo(lat=oat.LALN[:,0], lon=oat.LALN[:,1])
 
 lats = []
 lons = []
@@ -104,7 +107,7 @@ for index in range(1, len(oat.LALN), step_size):
     print("loading lat/lon #" + str(index))
 
 
-fig2 = go.Figure(
+'''fig2 = go.Figure(
     data=[go.Scatter(x=lons, y=lats,
                      mode="lines",
                      line=dict(width=2, color="blue")),
@@ -127,7 +130,39 @@ fig2 = go.Figure(
             marker=dict(color="red", size=10))])
 
         for k in range(len(lats))]
+)'''
+
+# https://stackoverflow.com/questions/63877348/how-do-i-set-dot-sizes-and-colors-for-a-plotly-express-scatter-geo
+
+fig2 = go.Figure(
+    data=[go.Scattergeo(lon=lons, lat=lats,
+                     mode="lines",
+                     line=dict(width=2, color="blue")),
+          go.Scattergeo(lon=lons, lat=lats,
+                     mode="lines",
+                     line=dict(width=2, color="blue"))],
+    layout=go.Layout(
+        #xaxis=dict(range=[-200, 200], autorange=False, zeroline=False),
+        #yaxis=dict(range=[-50, 50], autorange=False, zeroline=False),
+        title_text="Kinematic Generation of a Planar Curve", hovermode="closest",
+        updatemenus=[dict(type="buttons",
+                          buttons=[dict(label="Play",
+                                        method="animate",
+                                        args=[None])])]),
+    frames=[go.Frame(
+        data=[go.Scattergeo(
+            lon=[lons[k]],
+            lat=[lats[k]],
+            mode="markers",
+            marker=dict(color="red", size=10))])
+
+        for k in range(len(lats))]
 )
+
+
+
+
+
 
 fig3 = go.Figure(
     data=[go.Scatter(x=oat.times_utc, y=oat.B, name='|B|'),
@@ -140,7 +175,7 @@ fig3 = go.Figure(
 
 
 
-frame_data = []
+'''frame_data = []
 frame_data.append(go.Scatter(x=[oat.times_utc[0]], y = [oat.B[0]], name='|B|'))
 frame_data.append(go.Scatter(x=[oat.times_utc[0]], y = [oat.Bx[0]], name='Bx'))
 frame_data.append(go.Scatter(x=[oat.times_utc[0]], y = [oat.By[0]], name='By'))
@@ -172,6 +207,45 @@ fig4 = go.Figure(
                           args=[None])])]
     ),
     frames=fig4_frames
+)'''
+
+
+times = [oat.times_utc[0]]
+B = [oat.B[0]]
+Bx = [oat.Bx[0]]
+By = [oat.By[0]]
+Bz = [oat.Bz[0]]
+for index in range(1, len(oat.times_utc), step_size):
+    times.append(oat.times_utc[index])
+    B.append(oat.B[index])
+    Bx.append(oat.Bx[index])
+    By.append(oat.By[index])
+    Bz.append(oat.Bz[index])
+    print("loading B #" + str(index))
+
+fig4 = go.Figure(
+    data=[go.Scatter(x=[times[0]], y=[B[0]], name='|B|'),
+          go.Scatter(x=[times[0]], y=[Bx[0]], name='Bx'),
+          go.Scatter(x=[times[0]], y=[By[0]], name='By'),
+          go.Scatter(x=[times[0]], y=[Bz[0]], name='Bz')],
+    layout=go.Layout(
+        #xaxis=dict(range=[0,4], autorange=False),
+        yaxis=dict(range=[-60,60], autorange=False),
+        title="Start Title",
+        updatemenus=[dict(
+            type="buttons",
+            buttons=[dict(label="Play",
+                          method="animate",
+                          args=[None])])]
+    ),
+    frames=[go.Frame(
+        data=[
+          go.Scatter(x=times[:k], y=B[:k], name='|B|'),
+          go.Scatter(x=times[:k], y=Bx[:k], name='Bx'),
+          go.Scatter(x=times[:k], y=By[:k], name='By'),
+          go.Scatter(x=times[:k], y=Bz[:k], name='Bz')])
+
+        for k in range(1, len(times))]
 )
 
 
@@ -276,11 +350,11 @@ app.layout = html.Div(children=[
 
             dcc.Graph(
                 id='graph4',
-                figure=fig
+                figure=fig4
             ),  
         ], className='six columns'),
     ], className='row'),
 ])
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8045)
+    app.run_server(debug=True, port=8050)
