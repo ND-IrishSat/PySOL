@@ -95,8 +95,7 @@ step_size = 50
         for k in range(0,len(oat.LALN)-step_size,step_size)]
 )'''
 
-fig1 = px.line_geo(lat=oat.LALN[:,0], lon=oat.LALN[:,1])
-#fig1 = px.scatter_geo(lat=oat.LALN[:,0], lon=oat.LALN[:,1])
+
 
 lats = []
 lons = []
@@ -107,30 +106,35 @@ for index in range(1, len(oat.LALN), step_size):
     print("loading lat/lon #" + str(index))
 
 
-'''fig2 = go.Figure(
-    data=[go.Scatter(x=lons, y=lats,
+#fig1 = go.Figure(go.Scattergeo(lat=oat.LALN[:,0], lon=oat.LALN[:,1], mode="lines", line=dict(width=2, color="blue")))
+#fig1.update_traces(marker_size=5, line=dict(color='Blue'))
+fig1 = go.Figure(
+    data=[go.Scattergeo(lon=lons, lat=lats,
                      mode="lines",
                      line=dict(width=2, color="blue")),
-          go.Scatter(x=lons, y=lats,
+          go.Scattergeo(lon=lons, lat=lats,
                      mode="lines",
                      line=dict(width=2, color="blue"))],
     layout=go.Layout(
-        xaxis=dict(range=[-200, 200], autorange=False, zeroline=False),
-        yaxis=dict(range=[-50, 50], autorange=False, zeroline=False),
+        #xaxis=dict(range=[-200, 200], autorange=False, zeroline=False),
+        #yaxis=dict(range=[-50, 50], autorange=False, zeroline=False),
         title_text="Kinematic Generation of a Planar Curve", hovermode="closest",
         updatemenus=[dict(type="buttons",
                           buttons=[dict(label="Play",
                                         method="animate",
                                         args=[None])])]),
     frames=[go.Frame(
-        data=[go.Scatter(
-            x=[lons[k]],
-            y=[lats[k]],
+        data=[go.Scattergeo(
+            lon=[lons[k]],
+            lat=[lats[k]],
             mode="markers",
             marker=dict(color="red", size=10))])
 
         for k in range(len(lats))]
-)'''
+)
+fig1.update_geos(projection_type="orthographic") 
+
+
 
 # https://stackoverflow.com/questions/63877348/how-do-i-set-dot-sizes-and-colors-for-a-plotly-express-scatter-geo
 
