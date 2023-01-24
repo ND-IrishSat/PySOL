@@ -109,10 +109,10 @@ for index in range(1, len(oat.LALN), step_size):
 #fig1 = go.Figure(go.Scattergeo(lat=oat.LALN[:,0], lon=oat.LALN[:,1], mode="lines", line=dict(width=2, color="blue")))
 #fig1.update_traces(marker_size=5, line=dict(color='Blue'))
 fig1 = go.Figure(
-    data=[go.Scattergeo(lon=lons, lat=lats,
+    data=[go.Scatter3d(x=X, y=Y, z=Z,
                      mode="lines",
                      line=dict(width=2, color="blue")),
-          go.Scattergeo(lon=lons, lat=lats,
+          go.Scatter3d(x=X, y=Y, z=Z,
                      mode="lines",
                      line=dict(width=2, color="blue"))],
     layout=go.Layout(
@@ -124,15 +124,15 @@ fig1 = go.Figure(
                                         method="animate",
                                         args=[None])])]),
     frames=[go.Frame(
-        data=[go.Scattergeo(
-            lon=[lons[k]],
-            lat=[lats[k]],
+        data=[go.Scatter3d(
+            x=[X[k]],
+            y=[Y[k]],
+            z=[Z[k]],
             mode="markers",
             marker=dict(color="red", size=10))])
 
-        for k in range(len(lats))]
+        for k in range(len(X))]
 )
-fig1.update_geos(projection_type="orthographic") 
 
 
 

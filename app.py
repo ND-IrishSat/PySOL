@@ -1,14 +1,18 @@
-from dash import Dash, html, dcc
-import plotly.express as px
+import dash
+from dash import dcc
+from dash import html
+from dash.dependencies import Input, Output
 import pandas as pd
+import plotly.express as px
+import geopandas as gpd
+import shapely.geometry
 import numpy as np
-import matplotlib.pyplot as plt
-import plotly.tools as tls
+from jupyter_dash import JupyterDash
+
+import plotly.graph_objects as go
 
 import csv
-import matplotlib.animation as animation
 import h5py
-import geopandas as gpd
 import astropy.time as astro_time
 
 import time
@@ -17,12 +21,20 @@ from wmm import WMM
 
 countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
 
-app = Dash(__name__)
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 # assume you have a "long-form" data frame
 # see https://plotly.com/python/px-arguments/ for more options
+df_bar = pd.DataFrame({
+    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
+    "Amount": [4, 1, 2, 2, 4, 5],
+    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
+})
 
-plotly_fig = plt.figure()
+fig = px.bar(df_bar, x="Fruit", y="Amount", color="City", barmode="group")
+
 
 class OAT:
 
@@ -31,7 +43,7 @@ class OAT:
         print('Initializing OAT simulation..')
 
         # set the font globally
-        plt.rcParams.update({'font.family':'sans-serif'})
+        #plt.rcParams.update({'font.family':'sans-serif'})
 
         self.sim_path = path
         self.out_path = output_path
@@ -59,191 +71,195 @@ class OAT:
 
         print('data successfully loaded..')
 
+oat = OAT('test.hdf5')
 
-    def orb_plot(self, i, speed, ax):
+step_size = 50
 
-        ax.clear()
-        lims = [8000, 8000, 8000]
-        xlim, ylim, zlim = lims
-        ax.set_xlim(-xlim, xlim)
-        ax.set_ylim(-ylim, ylim)
-        ax.set_zlim(-zlim, zlim)
-        ax.set_box_aspect([1, ylim/xlim, zlim/xlim])
+X = []
+Y = []
+Z = []
 
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_zticks([])
-        # ax.set_xlabel('X [km]')
-        # ax.set_ylabel('Y [km]')
-        # ax.set_zlabel('Z [km]')
-        I = xlim*np.array([[0, 0, 0], [1, 0, 0]])
-        J = ylim*np.array([[0, 0, 0], [0, 1, 0]])
-        K = zlim*np.array([[0, 0, 0], [0, 0, 1]])
-
-        ax.plot(I[:, 0], I[:, 1], I[:, 2], color = 'black')
-        ax.plot(J[:, 0], J[:, 1], J[:, 2], color = 'black')
-        ax.plot(K[:, 0], K[:, 1], K[:, 2], color = 'black')
-
-        last_frame = i*speed
-        #ax.plot(self.X, self.Y, self.Z, color = 'goldenrod', lw = 1, )
-        ax.plot(self.X[0:last_frame], self.Y[0:last_frame], self.Z[0:last_frame], 
-            color = 'navy', lw = 5)
-        ax.scatter(self.X[last_frame], self.Y[last_frame], self.Z[last_frame], s = 100, 
-                fc = 'goldenrod', ec = 'navy', marker = '.', zorder = 3)
-        earth = self.__earth_3d()
-        ax.plot_wireframe(earth[0], earth[1], earth[2], 
-            color = 'steelblue', alpha = 0.7, zorder = 0)
+for index in range(1, len(oat.X), step_size):
+    X.append(oat.X[index])
+    Y.append(oat.Y[index])
+    Z.append(oat.Z[index])
 
 
-    def groundtrack_plot(self, i, speed, ax):
+lats = []
+lons = []
 
-        ax.clear()
-        countries.plot(ax = ax, color= 'gray', alpha = 0.3, edgecolor='black')
-
-        last_frame = i*speed
-        ax.scatter(self.LALN[:, 1], self.LALN[:, 0], s = 0.1, 
-            color = 'goldenrod', alpha = 0.1)
-        ax.scatter(self.LALN[0:last_frame, 1], self.LALN[0:last_frame, 0], s = 5, 
-            color = 'navy' )
-
-        ax.set_xlabel('Longitude [deg]')
-        ax.set_ylabel('Lattitude [deg]')
-
-        ax.set_xlim(-180, 180)
-        ax.set_ylim(-90, 90)
-
-        ax.set_yticks(np.arange(-90, 91, 15))
-        ax.set_xticks(np.arange(-180, 180, 30))
-        ax.grid()
-
-    def text_plot(self, i, speed, ax):
-
-        tsize = 8
-
-        last_frame = i*speed
-        ax.clear()
-        ax.set_yticks([])
-        ax.set_xticks([])
-        ax.text(0.02, 0.98, 8*' ' + 'Orbital Data' + 8*' ', fontsize = 14, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes, 
-            bbox = dict(facecolor='navy', alpha=0.5))
-
-        ax.text(0.02, 0.90, 'f  : {:3.2f}°'.format(self.OE_[last_frame, 0]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-        ax.text(0.02, 0.85, 'a : {:5.2f} [km]'.format(self.OE_[last_frame, 1]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-        ax.text(0.02, 0.80, 'e : {:3.5f}'.format(self.OE_[last_frame, 2]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-        ax.text(0.02, 0.75, 'i  : {:3.2f}°'.format(self.OE_[last_frame, 3]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-        ax.text(0.02, 0.70, r'$\Omega$' +  ' : {:3.2f}°'.format(self.OE_[last_frame, 4]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-        ax.text(0.02, 0.65, r'$\omega$'+' : {:3.2f}°'.format(self.OE_[last_frame, 2]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-
-        ax.text(0.27, 0.90, 'h   : {:3.2f} [km]'.format(self.H[last_frame]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-        ax.text(0.27, 0.85, 'Lat : {:3.2f}°'.format(self.LALN[last_frame,0]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-        ax.text(0.27, 0.80, 'Lat : {:3.2f}°'.format(self.LALN[last_frame, 1]), 
-            fontsize = tsize, horizontalalignment='left',
-            verticalalignment='top', transform=ax.transAxes)
-
-    def plot_B(self, i, speed, ax):
-
-        # times = sc.state_mat.times
-
-        last_frame = i*speed
-        ax.clear()
-        ax.set_xlabel('Time [UTC]')
-        ax.set_ylabel(r'[$\mu T$]')
-        ax.set_ylim(-80, 80)
-
-        ax.plot(self.times_utc[0: last_frame], self.B[0:last_frame], label = r'|B|')
-        ax.plot(self.times_utc[0: last_frame], self.Bx[0: last_frame], label = r'$B_x$')
-        ax.plot(self.times_utc[0: last_frame], self.By[0: last_frame], label = r'$B_y$')
-        ax.plot(self.times_utc[0: last_frame], self.Bz[0: last_frame], label = r'$B_z$')
-
-        ax.grid()
-
-        ax.legend(loc = 0)
-
-    def plot_func(self, i, speed, output, o_fn):
-
-        if output:
-            with open(self.out_path + o_fn, 'w') as o_f:
-
-                text = np.arange(0, i, 1)
-                writer = csv.writer(o_f)
-
-                writer.writerow(text)
-
-        self.fig.suptitle('IrishSat OAT Laboratory', size = 30)
-
-        self.orb_plot(i, speed, ax = self.ax1)
-        self.groundtrack_plot(i, speed, ax = self.ax2)
-        self.text_plot(i, speed, ax = self.ax3)
-        self.plot_B(i, speed, ax = self.ax4)
-
-    def __earth_3d(self):
-
-        R_e = 6371 #km
-
-        u, v = np.mgrid[0:2*np.pi:100j, 0:np.pi:100j]
-        x = (np.cos(u)*np.sin(v))*R_e
-        y = (np.sin(u)*np.sin(v))*R_e
-        z = (np.cos(v))*R_e
-
-        earth = np.array([x, y, z])
-
-        return earth 
+for index in range(1, len(oat.LALN), step_size):
+    lats.append(oat.LALN[index,0])
+    lons.append(oat.LALN[index,1])
+    print("loading lat/lon #" + str(index))
 
 
-    def run_OAT(self, speed = 10, fps = 2, output = False, o_fn = 'oat_output'):
+#fig1 = go.Figure(go.Scattergeo(lat=oat.LALN[:,0], lon=oat.LALN[:,1], mode="lines", line=dict(width=2, color="blue")))
+#fig1.update_traces(marker_size=5, line=dict(color='Blue'))
+fig1 = go.Figure(
+    data=[go.Scatter3d(x=X, y=Y, z=Z,
+                     mode="lines",
+                     line=dict(width=2, color="blue")),
+          go.Scatter3d(x=X, y=Y, z=Z,
+                     mode="lines",
+                     line=dict(width=2, color="blue"))],
+    layout=go.Layout(
+        #xaxis=dict(range=[-200, 200], autorange=False, zeroline=False),
+        #yaxis=dict(range=[-50, 50], autorange=False, zeroline=False),
+        title_text="Kinematic Generation of a Planar Curve", hovermode="closest",
+        updatemenus=[dict(type="buttons",
+                          buttons=[dict(label="Play",
+                                        method="animate",
+                                        args=[None])])]),
+    frames=[go.Frame(
+        data=[go.Scatter3d(
+            x=[X[k]],
+            y=[Y[k]],
+            z=[Z[k]],
+            mode="markers",
+            marker=dict(color="red", size=10))])
 
-        self.fig = plt.figure(figsize= [15, 8])
+        for k in range(len(X))]
+)
 
-        self.fig.patch.set_facecolor('slategray')
-        self.fig.patch.set_alpha(0.6)
-        self.fig.tight_layout()
 
-        #self.ax1 = self.fig.add_subplot(221, projection = '3d')
-        self.ax1 = self.fig.add_subplot(221)
-        self.ax2 = self.fig.add_subplot(222)
-        self.ax3 = self.fig.add_subplot(223)
-        self.ax4 = self.fig.add_subplot(224)
-        
-        '''ani = animation.FuncAnimation(self.fig, self.plot_func, interval= int(1e3/fps),  
-            cache_frame_data=False,
-            fargs= [speed, output, o_fn])'''
-        #plotly_fig = tls.mpl_to_plotly(self.fig)
+
+# https://stackoverflow.com/questions/63877348/how-do-i-set-dot-sizes-and-colors-for-a-plotly-express-scatter-geo
+
+fig2 = go.Figure(
+    data=[go.Scattergeo(lon=lons, lat=lats,
+                     mode="lines",
+                     line=dict(width=2, color="blue")),
+          go.Scattergeo(lon=lons, lat=lats,
+                     mode="lines",
+                     line=dict(width=2, color="blue"))],
+    layout=go.Layout(
+        #xaxis=dict(range=[-200, 200], autorange=False, zeroline=False),
+        #yaxis=dict(range=[-50, 50], autorange=False, zeroline=False),
+        title_text="Kinematic Generation of a Planar Curve", hovermode="closest",
+        updatemenus=[dict(type="buttons",
+                          buttons=[dict(label="Play",
+                                        method="animate",
+                                        args=[None])])]),
+    frames=[go.Frame(
+        data=[go.Scattergeo(
+            lon=[lons[k]],
+            lat=[lats[k]],
+            mode="markers",
+            marker=dict(color="red", size=10))])
+
+        for k in range(len(lats))]
+)
+
+
+
+
+
+
+fig3 = go.Figure(
+    data=[go.Scatter(x=oat.times_utc, y=oat.B, name='|B|'),
+          go.Scatter(x=oat.times_utc, y=oat.Bx, name='Bx'),
+          go.Scatter(x=oat.times_utc, y=oat.By, name='By'),
+          go.Scatter(x=oat.times_utc, y=oat.Bz, name='Bz')]
+)
+
+
+times = [oat.times_utc[0]]
+B = [oat.B[0]]
+Bx = [oat.Bx[0]]
+By = [oat.By[0]]
+Bz = [oat.Bz[0]]
+for index in range(1, len(oat.times_utc), step_size):
+    times.append(oat.times_utc[index])
+    B.append(oat.B[index])
+    Bx.append(oat.Bx[index])
+    By.append(oat.By[index])
+    Bz.append(oat.Bz[index])
+    print("loading B #" + str(index))
+
+fig4 = go.Figure(
+    data=[go.Scatter(x=[times[0]], y=[B[0]], name='|B|'),
+          go.Scatter(x=[times[0]], y=[Bx[0]], name='Bx'),
+          go.Scatter(x=[times[0]], y=[By[0]], name='By'),
+          go.Scatter(x=[times[0]], y=[Bz[0]], name='Bz')],
+    layout=go.Layout(
+        #xaxis=dict(range=[0,4], autorange=False),
+        yaxis=dict(range=[-60,60], autorange=False),
+        title="Start Title",
+        updatemenus=[dict(
+            type="buttons",
+            buttons=[dict(label="Play",
+                          method="animate",
+                          args=[None])])]
+    ),
+    frames=[go.Frame(
+        data=[
+          go.Scatter(x=times[:k], y=B[:k], name='|B|'),
+          go.Scatter(x=times[:k], y=Bx[:k], name='Bx'),
+          go.Scatter(x=times[:k], y=By[:k], name='By'),
+          go.Scatter(x=times[:k], y=Bz[:k], name='Bz')])
+
+        for k in range(1, len(times))]
+)
 
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Hello Dash'),
+    # All elements from the top of the page
+    html.Div([
+        html.Div([
+            html.H1(children='Hello Dash'),
 
-    html.Div(children='''
-        Dash: A web application framework for your data.
-    '''),
+            html.Div(children='''
+                Dash: A web application framework for Python.
+            '''),
 
-    dcc.Graph(
-        id='example-graph',
-        figure=plotly_fig
-    )
+            dcc.Graph(
+                id='graph1',
+                figure=fig1
+            ),  
+        ], className='six columns'),
+        html.Div([
+            html.H1(children='Hello Dash'),
+
+            html.Div(children='''
+                Dash: A web application framework for Python.
+            '''),
+
+            dcc.Graph(
+                id='graph2',
+                figure=fig2
+            ),  
+        ], className='six columns'),
+    ], className='row'),
+    # New Div for all elements in the new 'row' of the page
+    html.Div([
+        html.Div([
+            html.H1(children='Hello Dash'),
+
+            html.Div(children='''
+                Dash: A web application framework for Python.
+            '''),
+
+            dcc.Graph(
+                id='graph3',
+                figure=fig
+            ),  
+        ], className='six columns'),
+        html.Div([
+            html.H1(children='Hello Dash'),
+
+            html.Div(children='''
+                Dash: A web application framework for Python.
+            '''),
+
+            dcc.Graph(
+                id='graph4',
+                figure=fig4
+            ),  
+        ], className='six columns'),
+    ], className='row'),
 ])
 
 if __name__ == '__main__':
-    oat = OAT('test.hdf5')
-    oat.run_OAT(fps = 1, speed = 20, output= True)
-    plotly_fig = tls.mpl_to_plotly(oat.fig)
-    time.sleep(10)
-    app.run_server(debug=True, port=8051)
+    app.run_server(debug=True, port=8050)

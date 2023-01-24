@@ -93,7 +93,7 @@ for index in range(1, len(oat.X), step_size):
 '''fig = go.Figure(data=[go.Scatter3d(x=oat.X, y=oat.Y, z=oat.Z,
                                    mode='markers')])'''
 
-print(oat.__earth_3d())
+#print(oat.__earth_3d())
 
 fig = go.Figure(
     data=[go.Scatter3d(x=X, y=Y, z=Z,
