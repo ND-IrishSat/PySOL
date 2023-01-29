@@ -10,6 +10,7 @@ import numpy as np
 from jupyter_dash import JupyterDash
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 import csv
 import h5py
@@ -33,7 +34,7 @@ df_bar = pd.DataFrame({
     "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
 })
 
-fig = px.bar(df_bar, x="Fruit", y="Amount", color="City", barmode="group")
+
 
 
 class OAT:
@@ -94,6 +95,92 @@ for index in range(1, len(oat.LALN), step_size):
     print("loading lat/lon #" + str(index))
 
 
+times = [oat.times_utc[0]]
+B = [oat.B[0]]
+Bx = [oat.Bx[0]]
+By = [oat.By[0]]
+Bz = [oat.Bz[0]]
+for index in range(1, len(oat.times_utc), step_size):
+    times.append(oat.times_utc[index])
+    B.append(oat.B[index])
+    Bx.append(oat.Bx[index])
+    By.append(oat.By[index])
+    Bz.append(oat.Bz[index])
+    print("loading B #" + str(index))
+
+
+
+
+fig = make_subplots(rows=2, cols=2,
+                    specs=[[{"secondary_y": True}, {"secondary_y": True}],
+                           [{"secondary_y": True}, {"secondary_y": True}]])
+
+
+# Top left
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[2, 52, 62], name="yaxis data"),
+    row=1, col=1, secondary_y=False)
+
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[40, 50, 60], name="yaxis2 data"),
+    row=1, col=1, secondary_y=True,
+)
+
+# Top right
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[2, 52, 62], name="yaxis3 data"),
+    row=1, col=2, secondary_y=False,
+)
+
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[40, 50, 60], name="yaxis4 data"),
+    row=1, col=2, secondary_y=True,
+)
+
+# Bottom left
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[2, 52, 62], name="yaxis5 data"),
+    row=2, col=1, secondary_y=False,
+)
+
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[40, 50, 60], name="yaxis6 data"),
+    row=2, col=1, secondary_y=True,
+)
+
+# Bottom right
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[2, 52, 62], name="yaxis7 data"),
+    row=2, col=2, secondary_y=False,
+)
+
+fig.add_trace(
+    go.Scatter(x=[1, 2, 3], y=[40, 50, 60], name="yaxis8 data"),
+    row=2, col=2, secondary_y=True,
+)
+
+#fig.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fig1 = go.Figure(
     data=[go.Scatter3d(x=X, y=Y, z=Z,
                      mode="lines",
@@ -119,8 +206,6 @@ fig1 = go.Figure(
 )
 
 
-
-# https://stackoverflow.com/questions/63877348/how-do-i-set-dot-sizes-and-colors-for-a-plotly-express-scatter-geo
 
 fig2 = go.Figure(
     data=[go.Scattergeo(lon=lons, lat=lats,
@@ -150,26 +235,9 @@ fig2 = go.Figure(
 
 
 
-fig3 = go.Figure(
-    data=[go.Scatter(x=oat.times_utc, y=oat.B, name='|B|'),
-          go.Scatter(x=oat.times_utc, y=oat.Bx, name='Bx'),
-          go.Scatter(x=oat.times_utc, y=oat.By, name='By'),
-          go.Scatter(x=oat.times_utc, y=oat.Bz, name='Bz')]
-)
+fig3 = px.bar(df_bar, x="Fruit", y="Amount", color="City", barmode="group")
 
 
-times = [oat.times_utc[0]]
-B = [oat.B[0]]
-Bx = [oat.Bx[0]]
-By = [oat.By[0]]
-Bz = [oat.Bz[0]]
-for index in range(1, len(oat.times_utc), step_size):
-    times.append(oat.times_utc[index])
-    B.append(oat.B[index])
-    Bx.append(oat.Bx[index])
-    By.append(oat.By[index])
-    Bz.append(oat.Bz[index])
-    print("loading B #" + str(index))
 
 fig4 = go.Figure(
     data=[go.Scatter(x=[times[0]], y=[B[0]], name='|B|'),
@@ -197,61 +265,18 @@ fig4 = go.Figure(
 
 
 
+app = dash.Dash()
 app.layout = html.Div(children=[
-    # All elements from the top of the page
-    html.Div([
-        html.Div([
-            html.H1(children='Hello Dash'),
+    html.H1(children='Hello Dash'),
 
-            html.Div(children='''
-                Dash: A web application framework for Python.
-            '''),
+    html.Div(children='''
+        Dash: A web application framework for your data.
+    '''),
 
-            dcc.Graph(
-                id='graph1',
-                figure=fig1
-            ),  
-        ], className='six columns'),
-        html.Div([
-            html.H1(children='Hello Dash'),
-
-            html.Div(children='''
-                Dash: A web application framework for Python.
-            '''),
-
-            dcc.Graph(
-                id='graph2',
-                figure=fig2
-            ),  
-        ], className='six columns'),
-    ], className='row'),
-    # New Div for all elements in the new 'row' of the page
-    html.Div([
-        html.Div([
-            html.H1(children='Hello Dash'),
-
-            html.Div(children='''
-                Dash: A web application framework for Python.
-            '''),
-
-            dcc.Graph(
-                id='graph3',
-                figure=fig
-            ),  
-        ], className='six columns'),
-        html.Div([
-            html.H1(children='Hello Dash'),
-
-            html.Div(children='''
-                Dash: A web application framework for Python.
-            '''),
-
-            dcc.Graph(
-                id='graph4',
-                figure=fig4
-            ),  
-        ], className='six columns'),
-    ], className='row'),
+    dcc.Graph(
+        id='example-graph',
+        figure=fig
+    )
 ])
 
 if __name__ == '__main__':
