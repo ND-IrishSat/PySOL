@@ -94,8 +94,6 @@ for index in range(1, len(oat.LALN), step_size):
     print("loading lat/lon #" + str(index))
 
 
-#fig1 = go.Figure(go.Scattergeo(lat=oat.LALN[:,0], lon=oat.LALN[:,1], mode="lines", line=dict(width=2, color="blue")))
-#fig1.update_traces(marker_size=5, line=dict(color='Blue'))
 fig1 = go.Figure(
     data=[go.Scatter3d(x=X, y=Y, z=Z,
                      mode="lines",
@@ -104,8 +102,6 @@ fig1 = go.Figure(
                      mode="lines",
                      line=dict(width=2, color="blue"))],
     layout=go.Layout(
-        #xaxis=dict(range=[-200, 200], autorange=False, zeroline=False),
-        #yaxis=dict(range=[-50, 50], autorange=False, zeroline=False),
         title_text="Kinematic Generation of a Planar Curve", hovermode="closest",
         updatemenus=[dict(type="buttons",
                           buttons=[dict(label="Play",
@@ -134,8 +130,6 @@ fig2 = go.Figure(
                      mode="lines",
                      line=dict(width=2, color="blue"))],
     layout=go.Layout(
-        #xaxis=dict(range=[-200, 200], autorange=False, zeroline=False),
-        #yaxis=dict(range=[-50, 50], autorange=False, zeroline=False),
         title_text="Kinematic Generation of a Planar Curve", hovermode="closest",
         updatemenus=[dict(type="buttons",
                           buttons=[dict(label="Play",
@@ -183,7 +177,6 @@ fig4 = go.Figure(
           go.Scatter(x=[times[0]], y=[By[0]], name='By'),
           go.Scatter(x=[times[0]], y=[Bz[0]], name='Bz')],
     layout=go.Layout(
-        #xaxis=dict(range=[0,4], autorange=False),
         yaxis=dict(range=[-60,60], autorange=False),
         title="Start Title",
         updatemenus=[dict(
