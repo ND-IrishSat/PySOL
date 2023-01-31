@@ -74,15 +74,27 @@ oat = OAT('test.hdf5')
 
 step_size = 50
 
+def get_time(time):
+    if time < 0:
+        time = 0
+    return oat.times_utc[time]
+
 def get_lonlat(time):
+    if time < 0:
+        time = 0
     return oat.LALN[time][1], oat.LALN[time][0]
+
+def get_B(time):
+    if time < 0:
+        time = 0
+    return oat.B[time], oat.Bx[time], oat.By[time], oat.Bz[time]
 
 
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = html.Div(
     html.Div([
-        html.H4('TERRA Satellite Live Feed'),
+        html.H4('IrishSat Demo Dashboard'),
         html.Div(id='live-update-text'),
         dcc.Graph(id='live-update-graph'),
         dcc.Interval(
@@ -102,10 +114,12 @@ app.layout = html.Div(
 def update_metrics(n):
     print(n*50)
     lon, lat = get_lonlat(n*50)
+    curr_time = oat.times_utc[n*50]
     style = {'padding': '5px', 'fontSize': '16px'}
     return [
         html.Span('Longitude: {0:.2f}'.format(lon), style=style),
-        html.Span('Latitude: {0:.2f}'.format(lat), style=style)
+        html.Span('Latitude: {0:.2f}'.format(lat), style=style),
+        html.Span('Time: {}'.format(str(curr_time)), style=style)
     ]
     '''lon, lat, alt = satellite.get_lonlatalt(datetime.datetime.now())
     style = {'padding': '5px', 'fontSize': '16px'}
@@ -162,11 +176,52 @@ def update_graph_live(n):
         'type': 'scatter'
     }, 2, 1)'''
 
+
+    data = {
+        'time': [],
+        'Latitude': [],
+        'Longitude': [],
+        '|B|': [],
+        'Bx': [],
+        'By': [],
+        'Bz': [],
+        'X': [],
+        'Y': [],
+        'Z': []
+    }
+
+    for i in range(180):
+        time = get_time(n) - datetime.timedelta(seconds=i*20)
+        lon, lat = get_lonlat(n-i*20)
+        B, Bx, By, Bz = get_B(n-i*20)
+        data['Longitude'].append(lon)
+        data['Latitude'].append(lat)
+        data['|B|'].append(B)
+        data['Bx'].append(Bx)
+        data['By'].append(By)
+        data['Bz'].append(Bz)
+        data['time'].append(time)
+
+    B, Bx, By, Bz = get_B(n*50)
     lons, lats = get_lonlat(n*50)
-    fig = go.Figure(
-        data=[go.Scattergeo(lon=[lons], lat=[lats],
-                     mode="markers",
-                     line=dict(width=2, color="red"))]
+
+    fig = plotly.tools.make_subplots(
+        rows=2, cols=1,
+        specs=[[{"type": "scattergeo"}],
+            [{"type": "scatter"}]]
+    )
+
+    fig.add_trace(
+        go.Scattergeo(lon=data['Longitude'], lat=data['Latitude'],
+                     mode="lines",
+                     line=dict(width=2, color="red")),
+        row=1, col=1
+    )
+
+    # fix this
+    fig.add_trace(
+        go.Scatter(x=data['time'], y=[B, Bx, By, Bz]),
+        row=2, col=1
     )
 
     return fig
