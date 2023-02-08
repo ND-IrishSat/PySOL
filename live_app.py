@@ -89,6 +89,11 @@ def get_B(time):
         time = 0
     return oat.B[time], oat.Bx[time], oat.By[time], oat.Bz[time]
 
+def get_XYZ(time):
+    if time < 0:
+        time = 0
+    return oat.X[time], oat.Y[time], oat.Z[time]
+
 
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -112,9 +117,13 @@ app.layout = html.Div(
 @app.callback(Output('live-update-text', 'children'),
               Input('interval-component', 'n_intervals'))
 def update_metrics(n):
-    print(n*50)
-    lon, lat = get_lonlat(n*50)
-    curr_time = oat.times_utc[n*50]
+    #print(n*50)
+    #lon, lat = get_lonlat(n*50)
+    #curr_time = oat.times_utc[n*50]
+    fast_n = n*40+2000
+
+    lon, lat = get_lonlat(fast_n)
+    curr_time = get_time(fast_n)
     style = {'padding': '5px', 'fontSize': '16px'}
     return [
         html.Span('Longitude: {0:.2f}'.format(lon), style=style),
@@ -190,25 +199,32 @@ def update_graph_live(n):
         'Z': []
     }
 
+    fast_n = n*40+2000
+
     for i in range(180):
-        time = get_time(n) - datetime.timedelta(seconds=i*20)
-        lon, lat = get_lonlat(n-i*20)
-        B, Bx, By, Bz = get_B(n-i*20)
+        time = get_time(fast_n) - datetime.timedelta(seconds=i*20)
+        lon, lat = get_lonlat(fast_n-i*20)
+        B, Bx, By, Bz = get_B(fast_n-i*20)
+        X, Y, Z = get_XYZ(fast_n-i*20)
         data['Longitude'].append(lon)
         data['Latitude'].append(lat)
         data['|B|'].append(B)
         data['Bx'].append(Bx)
         data['By'].append(By)
         data['Bz'].append(Bz)
+        data['X'].append(X)
+        data['Y'].append(Y)
+        data['Z'].append(Z)
         data['time'].append(time)
 
-    B, Bx, By, Bz = get_B(n*50)
-    lons, lats = get_lonlat(n*50)
+    #B, Bx, By, Bz = get_B(n*50)
+    #lons, lats = get_lonlat(n*50)
 
     fig = plotly.tools.make_subplots(
-        rows=2, cols=1,
+        rows=3, cols=1,
         specs=[[{"type": "scattergeo"}],
-            [{"type": "scatter"}]]
+            [{"type": "scatter"}],
+            [{"type": "scatter3d"}]]
     )
 
     fig.add_trace(
@@ -220,9 +236,28 @@ def update_graph_live(n):
 
     # fix this
     fig.add_trace(
-        go.Scatter(x=data['time'], y=[B, Bx, By, Bz]),
+        go.Scatter(name='|B|', x=data['time'], y=data['|B|']),
         row=2, col=1
     )
+    fig.add_trace(
+        go.Scatter(name='Bx', x=data['time'], y=data['Bx']),
+        row=2, col=1
+    )
+    fig.add_trace(
+        go.Scatter(name='By', x=data['time'], y=data['By']),
+        row=2, col=1
+    )
+    fig.add_trace(
+        go.Scatter(name='Bz', x=data['time'], y=data['Bz']),
+        row=2, col=1
+    )
+
+    fig.add_trace(
+        go.Scatter3d(x=data['X'], y=data['Y'], z=data['Z'], mode="markers"),
+        row=3, col=1
+    )
+
+    fig.update(layout_yaxis_range = [-60,60])
 
     return fig
 
