@@ -127,8 +127,14 @@ def update_metrics(n):
     style = {'padding': '5px', 'fontSize': '16px'}
     return [
         html.Span('Longitude: {0:.2f}'.format(lon), style=style),
-        html.Span('Latitude: {0:.2f}'.format(lat), style=style),
-        html.Span('Time: {}'.format(str(curr_time)), style=style)
+        html.Span('Latitude: {0:.2f}\n'.format(lat), style=style),
+        html.Span('Time: {} '.format(str(curr_time)), style=style),
+        html.Span('f: {:3.2f}° '.format(oat.OE_[fast_n, 0])),
+        html.Span('a: {:5.2f} [km] '.format(oat.OE_[fast_n, 1])),
+        html.Span('e: {:3.5f}\n'.format(oat.OE_[fast_n, 2])),
+        html.Span('i: {:3.2f}° '.format(oat.OE_[fast_n, 3])),
+        html.Span('Ω: {:3.2f}° '.format(oat.OE_[fast_n, 4])),
+        html.Span('h: {:3.2f} [km]'.format(oat.H[fast_n])),
     ]
     '''lon, lat, alt = satellite.get_lonlatalt(datetime.datetime.now())
     style = {'padding': '5px', 'fontSize': '16px'}
@@ -253,7 +259,7 @@ def update_graph_live(n):
     )
 
     fig.add_trace(
-        go.Scatter3d(x=data['X'], y=data['Y'], z=data['Z'], mode="markers"),
+        go.Scatter3d(x=data['X'], y=data['Y'], z=data['Z'], mode="lines"),
         row=3, col=1
     )
 
