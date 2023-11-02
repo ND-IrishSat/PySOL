@@ -283,7 +283,7 @@ class WMM():
         
         # Convert inputted geodetic latitude, longtitude, altitude coordinates into spherical geocentric coordinates
         # of geocentric latitude, longtitude, and radius from center
-        self.calc_LLA2GCC(lon_gd, lat, h_ellp, t, degrees)
+        self.calc_LLA2GCC(lat, lon_gd, h_ellp, t, degrees)
         self.determine_coefficients()
         
         # Intermediate values, pulling lon, lat, r, and other values from self for better readability
