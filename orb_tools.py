@@ -466,7 +466,7 @@ def calc_ECEF(r_, time):
     r = np.linalg.norm(r_)
 
     LA_rad = np.deg2rad(LA)
-    LN_rad = np.rad2deg(LN)
+    LN_rad = np.deg2rad(LN)
 
     r_ECEF = r*np.array([np.cos(LA_rad)*np.cos(LN_rad), np.cos(LA_rad)*np.sin(LN_rad), np.sin(LA_rad)])
 
