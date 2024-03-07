@@ -128,8 +128,9 @@ class FrameY():
         # Length of square + number of wires wrapped around
         self.L = length
         self.N = num
-        
-        self.mu_0 = 1.256637062
+
+        # Vacuum permeability
+        self.mu_0 = 1.256637062e-6
     
         # Constant in front of Biot-Savart Law: mu_0*N/(4*pi)
         self.const = self.mu_0*num/(4*np.pi)
@@ -409,4 +410,4 @@ if __name__ == "__main__":
     
     cage = HelmholtzCage(L, num, x_disp, y_disp, z_disp)
     cage.plot_Bfield(lim, lim, lim)
-    print(cage.calc_Bfield(r))
+    
