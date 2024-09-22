@@ -374,6 +374,7 @@ class WMM():
 # Testing WMM model
 if __name__ == "__main__":
     
+    # h HAS TO BE ALTITUDE IN METERS!!!!
     num = 10_000
     lat = -80.0*np.ones(num)
     lon1 = 240.0*np.ones(num)
@@ -383,9 +384,11 @@ if __name__ == "__main__":
     
     time1 = time.time()
     print(f'Calculating B field over {num} number of points at given time')
+    
     wmm_model = WMM(12, 'WMMcoef.csv')
     wmm_model.calc_gcc_components(lat, lon1, h, t, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
+
     time2 = time.time()
     print(f'Bfield: {Bfield1}')
     print(f'Calculated {num} number of times in {time2-time1} seconds')

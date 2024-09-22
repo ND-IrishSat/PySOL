@@ -451,9 +451,11 @@ def calc_h(r_):
     
     
     """
-    h = np.linalg.norm(r_) - constants.R_E
 
-    return h
+    h_ = np.sqrt(np.power(r_[:, 0], 2) + np.power(r_[:, 1], 2) + np.power(r_[:, 2], 2))
+    h_ = h_ - np.ones(h_.shape) * constants.R_E()
+
+    return h_
 
 
 def calc_ECEF(r_, time):

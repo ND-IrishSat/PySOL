@@ -509,13 +509,20 @@ if __name__ == '__main__':
     # sim.create_sc(OE_array= OE5, verbose = True, color = 'darkorange', name = 'Owen')
 
 
-    DT = dt.timedelta(hours = 1.5)
+    DT = dt.timedelta(hours = 0.1)
     sim.propogate(DT, resolution =  1)
+    orb_laln = sim.scs[0].state_mat.LALN
+    orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
+
+    print(sim.scs[0].state_mat.R_ECEF.shape)
+    print(orb_laln)
+    print(orb_h)
 
     # sim.calc_B_field()
 
     # sim.save_sim('filename')
 
+    '''
     sim.plot_orbit(lims = [10_000, 10_000, 10_000])
 
     sim.calc_B()
@@ -529,7 +536,7 @@ if __name__ == '__main__':
     sim.plot_XYZ()
 
     plt.show()
-
+    '''
 
 
     
