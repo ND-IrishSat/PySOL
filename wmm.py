@@ -27,6 +27,7 @@ import time
 import matplotlib.pyplot as plt
 
 from legendre import ssn_lpmv
+
 class WMMCoefficientLoader():
     ''' Class to load and hold model coefficients from reference epoch the WMM geomagnetic model for nth degree  
     model
@@ -178,8 +179,8 @@ class WMM():
         '''
         
         if degrees:
-            lat_gd *= np.pi/180.0
-            lon *= np.pi/180.0
+            lat_gd = lat_gd * np.pi/180.0
+            lon = lon * np.pi/180.0
             
         # Calculate radius of curvature of the prime vertical for given coordinates
         self.R_c = self.A / (np.sqrt(1-(self.f*(2-self.f))*(np.sin(lat_gd)**2)))
@@ -205,6 +206,7 @@ class WMM():
         self.legendre = []
         for i in np.arange(0, self.t.shape[0], 1):
             self.legendre.append(ssn_lpmv(self.degree+1, np.sin(self.GCC[0, i])))
+            #import pyshtools.legendre as legendre
             #self.legendre.append(legendre.PlmSchmidt(self.degree+1, np.sin(self.GCC[0, i])))
         self.legendre = np.array(self.legendre)    
         
@@ -376,12 +378,14 @@ if __name__ == "__main__":
     
     # h HAS TO BE ALTITUDE IN METERS!!!!
     num = 10_000
-    lat = -80.0*np.ones(num)
-    lon1 = 240.0*np.ones(num)
+    lat = np.array([41.675])
+    lon1 = np.array([-86.252])
     
-    h = 100000*np.ones(num)
-    t = 2022.5*np.ones(num)
+    h = np.array([0.219])
+    t = np.array([2024.10266])
     
+    print(lat, lon1, h)
+
     time1 = time.time()
     print(f'Calculating B field over {num} number of points at given time')
     
