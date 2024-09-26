@@ -182,7 +182,7 @@ class Simulation():
 
         # Set up integration
         state = sc.state_mat.S_[-1]
-        print(state)
+        print("state: ", state)
         t_eval = np.linspace(0, dt_sec, n_outputs)
 
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html
@@ -307,7 +307,7 @@ class Simulation():
     def plot_orbit(self, D2 = False, tau_f = None, Earth = True, 
         lims = [8000, 8000, 8000], IJK = True):
 
-        plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+        # plt.rcParams.update({'font.sans-serif': 'Helvetica'})
 
         xlim, ylim, zlim = lims
 
@@ -442,7 +442,7 @@ class Simulation():
 
         fig, axs = plt.subplots(nrows = 3, ncols = 1, figsize = [12, 6], sharex = True)
 
-        plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+        # plt.rcParams.update({'font.sans-serif': 'Helvetica'})
 
         for sc in self.scs:
             labels = ['X [km]', 'Y [km]', 'Z [km]']
@@ -498,7 +498,7 @@ class Simulation():
 
 if __name__ == '__main__':
 
-
+    # 3/21, 2022
     t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
     sim = Simulation(TIME = t0, mag_deg= 12)
 
@@ -529,29 +529,44 @@ if __name__ == '__main__':
     # OE5 = ot.OE_array(f = 0, a = 10_000, e = 0.1, i = 69, Om = 42, w = 63)
     # sim.create_sc(OE_array= OE5, verbose = True, color = 'darkorange', name = 'Owen')
 
-    resolution = 20.0 # time resolution, seconds
-    DT = dt.timedelta(hours = 12)
+    # total sim time, hours
+    hours = 4
+    DT = dt.timedelta(hours = hours)
+    
+    # time step, seconds
+    timestep = 20.0 
+    sim.propogate(DT, resolution = timestep)
 
-    sim.propogate(DT, resolution = resolution)
+    # calculate lat/long and height for each time step
+    orb_laln = sim.scs[0].state_mat.LALN
+    orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
+
+    print("shape: ", sim.scs[0].state_mat.R_ECEF.shape)
+    print("lat/long: ", orb_laln[:5])
+    print("hight: ", orb_h[:5])
 
     sim.plot_orbit(lims = [8_000, 8_000, 8_000])
 
     sim.calc_B()
-    sim.save_sim(file_name = 'test')
+
+    # save_sim saves magnetic field, ECI, ECEF, angular velocity, and time data in hdf5 format
+    # sim.save_sim(file_name = 'test')
 
     sim.plot_LALN()
     sim.plot_B()
 
-    #sim.plot_RADEC()
+    # sim.plot_RADEC()
 
-    #sim.plot_XYZ()
+    # sim.plot_XYZ()
 
     # plt.show()
 
     # GET CHANGE IN B-FIELD DATA FOR GOAT
+    # TODO: confirm that this B field for all time steps
     B_field = sim.scs[0].B_
 
-    print(B_field)
+    # TODO: find out what this weird structure is
+    print("B field: ", B_field)
 
     time_array = sim.scs[0].state_mat.times 
     time_array = time_array - dt.datetime.min
@@ -561,7 +576,7 @@ if __name__ == '__main__':
     for i in np.arange(time_array.shape[0]):
         time_array[i] = time_array[i].total_seconds() - start
 
-    print(time_array)
+    print("timesteps: ", time_array[:5])
 
     new_shape = (B_field.shape[0], B_field.shape[1] - 1)
     B_field_diff = np.zeros(new_shape)
@@ -569,7 +584,7 @@ if __name__ == '__main__':
 
     for i in np.arange(new_shape[1]):
         B_field_diff[:, i] = B_field[:, i+1] - B_field[:, i] # difference in magnetic field, in nT
-        B_field_dir[:, i] = B_field_diff[:, i] / resolution # time derivative, calculated roughly
+        B_field_dir[:, i] = B_field_diff[:, i] / timestep # time derivative, calculated roughly
 
     fig1 = plt.figure()
     fig2 = plt.figure()
