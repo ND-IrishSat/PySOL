@@ -562,11 +562,12 @@ if __name__ == '__main__':
     # plt.show()
 
     # GET CHANGE IN B-FIELD DATA FOR GOAT
-    # TODO: confirm that this B field for all time steps
     B_field = sim.scs[0].B_
 
-    # TODO: find out what this weird structure is
     print("B field: ", B_field)
+    # TODO: write a function to get B field data for all steps
+    #       in format [Bx, By, Bz] for each time step
+    #       instead of current format of every column being a time step
 
     time_array = sim.scs[0].state_mat.times 
     time_array = time_array - dt.datetime.min
