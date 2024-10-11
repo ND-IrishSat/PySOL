@@ -52,23 +52,24 @@ class OAT:
         Uses h5py and astropy.time
         Class to initialize and handle the data stored in HDF5 file
     '''
-    def __init__(self, fn, path = 'save_sim/', output_path = 'outputs/'):
+    def __init__(self,fn, path = 'save_sim/', output_path = 'outputs/'):
         '''
             Initialize OAT simulation by loading data from an HDF5 file.
         '''
 
         print('Initializing OAT simulation..')
 
-        # set the font globally
+        # Set the font globally
         #plt.rcParams.update({'font.family':'sans-serif'})
 
-        # 
+        # Assigns to where the simulation and output directory
         self.sim_path = path
         self.out_path = output_path
 
+        # Open the HDF5 file
         f = h5py.File(self.sim_path + fn, 'r')
         print('Loading ' + fn + '..')
-
+        
         self.dt = f.attrs['dt']
 
         self.X = f['states']['ECI']['X']
