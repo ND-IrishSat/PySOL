@@ -26,6 +26,9 @@ import time
 #import pyshtools.legendre as legendre
 import matplotlib.pyplot as plt
 
+import sys, os
+# add current directory to path variable so that we can find legendre.py
+sys.path.append(os.path.dirname(__file__))
 from legendre import ssn_lpmv
 
 class WMMCoefficientLoader():
