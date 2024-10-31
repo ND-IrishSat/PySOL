@@ -370,9 +370,39 @@ class WMM():
         self.GCC = np.transpose(self.GCC)
         
     def get_Bfield(self):
-        ''' Function to return the B field components in the ellipsoidal reference frame '''
+        ''' Function to return the B field components in nanoTeslain the ellipsoidal reference frame '''
         return self.Bfield_ellip
-       
+
+
+def bfield_calc(controls):
+    '''
+    Calculates the current true magnetic field based on gps data input
+    
+    @params
+        controls: gps and time data for current time step (latitude, longitude, height in meters, time arrays) (1 x 4)
+
+    @returns
+        converted: true, earth centered (eci frame) magnetic field in microteslas (1 x 3)
+    '''
+    # get lat, long, and height from control input vector
+    lat = controls[0] 
+    long = controls[1]
+    height = controls[2] 
+
+    # time data formatted as 2023.percentage of the year in month type stuff
+    time = controls[3] 
+
+    # calculate wmm: b frame with respect to eci frame (earth-centered)
+    wmm_model = WMM(12, 'WMMcoef.csv')
+    wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
+    Bfield1 = wmm_model.get_Bfield()
+    
+    # Convert nanotesla to microtesla
+    converted = Bfield1 / 1000
+
+    return converted
+
+
 # Testing WMM model
 if __name__ == "__main__":
     
