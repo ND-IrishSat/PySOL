@@ -17,7 +17,12 @@ import astropy.time as astro_time
 
 from wmm import WMM
 
-countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+# fix for geopandas depricating their dataset, probably slower
+url = "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+
+countries = gpd.read_file(url)
+# countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+
 
 class OAT:
 
