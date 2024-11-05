@@ -25,10 +25,19 @@ import matplotlib.pyplot as plt
 import constants
 
 import geopandas as gpd
+import geodatasets
 
 from wmm import WMM
 
-countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+
+# fix for geopandas depricating their dataset, probably slower
+# url = "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+# countries = gpd.read_file(url)
+
+# fix #2 using geodatasets library
+countries = gpd.read_file(geodatasets.get_path('naturalearth.land'))
+# this method is depricated in geopandas 1.0
+# countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
 
 # import matplotlib.pyplot as plt
 # # Read world Countries

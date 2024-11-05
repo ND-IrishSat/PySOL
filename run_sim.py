@@ -1,6 +1,8 @@
 """
 run_sim.py  -- 
 
+runs thing
+
 
 """
 
@@ -11,11 +13,21 @@ import numpy as np
 import matplotlib.animation as animation
 import h5py
 import geopandas as gpd
+import geodatasets
 import astropy.time as astro_time
 
 from wmm import WMM
 
-countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+# fix for geopandas depricating their dataset, probably slower
+# https://stackoverflow.com/questions/76548222/how-to-get-maps-to-geopandas-after-datasets-are-removed
+# url = "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+# countries = gpd.read_file(url)
+
+# fix #2 using geodatasets library
+countries = gpd.read_file(geodatasets.get_path('naturalearth.land'))
+# this method is depricated in geopandas 1.0
+# countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+
 
 class OAT:
 
