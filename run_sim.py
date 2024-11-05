@@ -15,6 +15,7 @@ import h5py
 import geopandas as gpd
 import geodatasets
 import astropy.time as astro_time
+import os
 
 from wmm import WMM
 
@@ -38,8 +39,15 @@ class OAT:
         # set the font globally
         plt.rcParams.update({'font.family':'sans-serif'})
 
-        self.sim_path = path
-        self.out_path = output_path
+        # configure the path correctly
+        script_path = os.path.abspath(__file__)
+        script_dir = os.path.split(script_path)[0]
+        abs_file_path = os.path.join(script_dir, path)
+
+        self.sim_path = abs_file_path
+        
+        abs_file_path = os.path.join(script_dir, output_path)
+        self.out_path = abs_file_path
 
         f = h5py.File(self.sim_path + fn, 'r')
         print('Loading ' + fn + '..')

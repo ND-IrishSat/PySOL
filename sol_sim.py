@@ -559,7 +559,7 @@ if __name__ == '__main__':
     sim.calc_B()
 
     # save_sim saves magnetic field, ECI, ECEF, angular velocity, and time data in hdf5 format
-    # sim.save_sim(file_name = 'test')
+    sim.save_sim(file_name = 'test', save_B=True)
 
     sim.plot_LALN()
     sim.plot_B()
