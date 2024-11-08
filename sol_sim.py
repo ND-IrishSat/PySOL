@@ -1,11 +1,17 @@
 """
-    sol_sim.py
+sol_sim.py
+Author: Jeremy Juwan, added to by Andrew Gaylord
 
-    
+Contains main simulation class and supporting functions for PySOL repository. 
 
-
+Newest interface functions:
+    generate_orbit_data (generates orbit data and stores in CSV file)
+    get_orbit_data (retrieves orbit data from CSV file)
 
 """
+
+# location for storing magnetic field CSV's
+OUTPUT_DIR = 'outputs'
 
 from itertools import count
 from math import remainder
@@ -18,7 +24,7 @@ import astropy.time as astro_time
 
 import os
 import h5py
-import datetime as dt
+import datetime
 import numpy as np
 import scipy.integrate as sci
 import matplotlib.pyplot as plt
@@ -90,7 +96,7 @@ class Simulation():
 
         # Set simulation clock
         if TIME == None:
-            self.t0  = dt.datetime.utcnow()
+            self.t0  = datetime.datetime.utcnow()
             self.time = self.t0 
         else:
             self.t0 = TIME 
@@ -152,7 +158,7 @@ class Simulation():
             t_s = sc_props[1]
             times = []
             for s in t_s:
-                delta_t = dt.timedelta(seconds  = s)
+                delta_t = datetime.timedelta(seconds  = s)
                 times.append(self.time + delta_t)
 
             # Add new state vectors to sc time list
@@ -228,7 +234,7 @@ class Simulation():
                     save_B = False):
 
         if file_name == None:
-            file_name = dt.datetime.now().strftime("%Y-%m-%d_PySol")
+            file_name = datetime.datetime.now().strftime("%Y-%m-%d_PySol")
         file_path = 'save_sim/{}.hdf5'.format(file_name)
 
         ### Handles multiple saved files for a given day, run
@@ -255,7 +261,7 @@ class Simulation():
 
         times = ST_MT.times
         dt = times[3] - times[2]
-        f.attrs['dt'] = dt.total_seconds()
+        f.attrs['dt'] = datetime.total_seconds()
 
         f.attrs['N Sc'] = len(self.scs)
         f.attrs['Dyn Model'] = self.model_nm
@@ -505,10 +511,105 @@ class Simulation():
         return earth 
 
 
+def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.csv", store_data=False):
+    '''
+    Generate the magnetic field data for a given orbit
+    If store_data is True, the magnetic field data is saved to a CSV file in the OUTPUT_DIR folder
+        First line of CSV file contains orbit info
+
+    @params:
+        OE_array ( 1x6 array ): orbital elements of the spacecraft. 6 numbers to describe the shape and orientation of the orbit
+            Position of spacecraft along 1D motion path:
+                f - true anomaly [deg]: angle between point closest to earth and current location
+            Shape of ellipse in 2D:
+                a - semi-major axis [km]: the distance from the center of an ellipse to the longer end of the ellipse=radius/altitude lol
+                e - eccentricity [0, 1): how stretched the ellipse is, circle = 0
+            Orient 2D ellipse in 3D:
+                i - inclination [deg]: angle between equator and orbit plane
+                Om - right ascension (RA) of ascending node [deg]: angle between ascending node and non-rotating coordinate system of earth (geocentric equatorial coordinate system)
+                w - argument of perigee/periapsis [deg]: angle between ascending node and point of closest approach to earth (periapsis)
+
+        total_time (float): total time of the simulation (hours)
+        timestep (float): time step of the simulation (seconds)
+        file_name (str): name of CSV file
+
+    @returns:
+        B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
+    '''
+
+    # initialize simulation object (with time = current date and time)
+    sim = Simulation(mag_deg = 12)
+
+    # create spacecraft object with specified orbital elements
+    OE = ot.OE_array(*OE_array)
+    sim.create_sc(OE_array= OE, verbose = True, color = 'green', name = file_name)
+
+    # how long we're simulating for
+    DT = datetime.timedelta(hours = total_time)
+    # propogate and solve the simulation
+    # resolution = timestep (seconds)
+    sim.propogate(DT, resolution =  timestep)
+    
+    # calculate b field based on GPS data from model
+    sim.calc_B()
+
+    # extract the magnetic field from the sim
+    B_field = np.array(sim.scs[0].B_)
+    # Reshape B_field to be [n_steps, 3] where each row contains [Bx, By, Bz]
+    B_field = B_field.T
+    # convert to uT (microTesla)
+    B_earth = B_field * 1e-3
+
+    if store_data:
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Create OUTPUT_DIR as a subdirectory of the script location
+        output_dir = os.path.join(script_dir, OUTPUT_DIR)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Full path to output file
+        output_path = os.path.join(output_dir, file_name)
+        
+        # Save data to CSV
+        with open(output_path, 'w') as f:
+            # Write header with simulation parameters
+            f.write(f"# f={OE_array[0]},a={OE_array[1]},e={OE_array[2]},i={OE_array[3]},Om={OE_array[4]},w={OE_array[5]},total_time={total_time},timestep={timestep}\n")
+            
+            # Write B-field data
+            np.savetxt(f, B_earth, delimiter=',', header='Bx,By,Bz', comments='')
+            
+        print(f"Data saved to {output_path}")
+
+    return B_earth
+
+
+def get_orbit_data(file_name):
+    '''
+    Get the magnetic field data from the specified CSV file in OUTPUT_DIR folder
+
+    @params:
+        file_name (str): name of the CSV file to get the data from
+
+    @returns:
+        B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
+    '''
+    pass
+
+
 if __name__ == '__main__':
 
+    oe = [121, 6_800, 0.0000922, 51, -10, 80]
+    total_time = 1
+    timestep = 1.0
+    file_name = "test.csv"
+    store_data = True
+
+    generate_orbit_data(oe, total_time, timestep, file_name, store_data)
+
+    '''
     # 3/21, 2022
-    t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
+    t0 = datetime.datetime(2022, 3, 21, 0, 0, 0)
     sim = Simulation(TIME = t0, mag_deg= 12)
 
     # True anomaly
@@ -540,7 +641,7 @@ if __name__ == '__main__':
 
     # total sim time, hours
     hours = 4
-    DT = dt.timedelta(hours = hours)
+    DT = datetime.timedelta(hours = hours)
     
     # time step, seconds
     timestep = 20.0 
@@ -579,7 +680,7 @@ if __name__ == '__main__':
     #       instead of current format of every column being a time step
 
     time_array = sim.scs[0].state_mat.times 
-    time_array = time_array - dt.datetime.min
+    time_array = time_array - datetime.datetime.min
 
     start = time_array[0].total_seconds()
 
@@ -619,4 +720,4 @@ if __name__ == '__main__':
 
 
 
-    
+    '''
