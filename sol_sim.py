@@ -594,11 +594,23 @@ def get_orbit_data(file_name):
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
     '''
-    pass
+
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Full path to output file
+    output_path = os.path.join(script_dir, OUTPUT_DIR, file_name)
+    
+    B_fields = np.genfromtxt(output_path, delimiter=',')
+
+    # remove header
+    B_fields = B_fields[1:, :]
+
+    return B_fields
 
 
 if __name__ == '__main__':
-
+    '''
     oe = [121, 6_800, 0.0000922, 51, -10, 80]
     total_time = 1
     timestep = 1.0
@@ -606,6 +618,8 @@ if __name__ == '__main__':
     store_data = True
 
     generate_orbit_data(oe, total_time, timestep, file_name, store_data)
+
+    print(get_orbit_data(file_name))
 
     '''
     # 3/21, 2022
@@ -713,11 +727,8 @@ if __name__ == '__main__':
         axes2[i].plot(time_array[:-1], B_field_dir[i, :] * 1e-3)
         axes2[i].set_ylabel('dB' + direc + '/dt + (muT)')
 
-    np.savetxt('B_out.csv', (time_array, B_field[0, :] * 1e-3, B_field[1, :] * 1e-3, B_field[2, :] * 1e-3), delimiter = ',')
+    # np.savetxt('B_out.csv', (time_array, B_field[0, :] * 1e-3, B_field[1, :] * 1e-3, B_field[2, :] * 1e-3), delimiter = ',')
     plt.show()
 
     
 
-
-
-    '''
