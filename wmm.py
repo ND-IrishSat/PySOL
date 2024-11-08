@@ -64,7 +64,7 @@ class WMMCoefficientLoader():
             file_name (str): name of csv file to read coefficients from
         '''
         
-        data = np.loadtxt('WMMcoef.csv')
+        data = np.loadtxt(file_name)
         
         self.g_ = data[:, 0]
         self.h_ = data[:, 1]

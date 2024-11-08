@@ -8,6 +8,12 @@ Newest interface functions:
     generate_orbit_data (generates orbit data and stores in CSV file)
     get_orbit_data (retrieves orbit data from CSV file)
 
+To use, import PySOL in specific order:
+    import Simulator.PySOL.wmm as wmm
+    from Simulator.PySOL.sol_sim import *
+    import Simulator.PySOL.spacecraft as sp
+    import Simulator.PySOL.orb_tools as ot
+
 """
 
 # location for storing magnetic field CSV's
@@ -87,7 +93,11 @@ class Simulation():
 
         ####!!!!!!! FLAG 
         model = models.Orbital_Models(model_name)
-        wmm_model = WMM(mag_deg, 'WMMcoef.csv')
+        # find the directory of current file and append to get absolute path
+        wmm_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WMMcoef.csv')
+
+        # wmm_model = WMM(mag_deg, 'WMMcoef.csv')
+        wmm_model = WMM(mag_deg, wmm_path)
 
         self.mag_model = wmm_model
 
@@ -261,7 +271,7 @@ class Simulation():
 
         times = ST_MT.times
         dt = times[3] - times[2]
-        f.attrs['dt'] = datetime.total_seconds()
+        f.attrs['dt'] = dt.total_seconds()
 
         f.attrs['N Sc'] = len(self.scs)
         f.attrs['Dyn Model'] = self.model_nm
