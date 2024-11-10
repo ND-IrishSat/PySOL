@@ -396,7 +396,8 @@ def bfield_calc(controls):
     time = controls[3] 
 
     # calculate wmm: b frame with respect to eci frame (earth-centered)
-    wmm_model = WMM(12, 'WMMcoef.csv')
+    wmm_coef_path = os.path.join(os.path.dirname(__file__), 'WMMcoef.csv')
+    wmm_model = WMM(12, wmm_coef_path)
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
     
