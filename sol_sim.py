@@ -247,7 +247,11 @@ class Simulation():
             file_name = datetime.datetime.now().strftime("%Y-%m-%d_PySol")
         file_path = 'save_sim/{}.hdf5'.format(file_name)
 
-        ### Handles multiple saved files for a given day, run
+        # append current file path to file_path to get absolute path
+        # find directory of current file and append to get absolute path
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), file_path)
+
+        ### if file already exists, append a number to the end of the file name
         exists = os.path.exists(file_path)
         i = 0
         while exists == True:
@@ -255,11 +259,12 @@ class Simulation():
             i_str = str(i)
             temp_name = '_'.join([file_name, i_str])
             temp_path = 'save_sim/{}.hdf5'.format(temp_name)
+            temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), temp_path)
             exists = os.path.exists(temp_path)
         if i >0:
             file_path = temp_path
         #######################################################
-            
+
 
         sc = self.scs[0] # only saving the first spacecraft trajectory
         ST_MT = sc.state_mat
@@ -698,10 +703,7 @@ if __name__ == '__main__':
     # GET CHANGE IN B-FIELD DATA FOR GOAT
     B_field = sim.scs[0].B_
 
-    print("B field: ", B_field)
-    # TODO: write a function to get B field data for all steps
-    #       in format [Bx, By, Bz] for each time step
-    #       instead of current format of every column being a time step
+    # print("B field: ", B_field)
 
     time_array = sim.scs[0].state_mat.times 
     time_array = time_array - datetime.datetime.min
