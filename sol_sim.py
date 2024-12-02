@@ -22,7 +22,7 @@ OUTPUT_DIR = 'outputs'
 from itertools import count
 from math import remainder
 from time import strftime
-from tkinter.tix import DisplayStyle
+# from tkinter.tix import DisplayStyle
 import spacecraft as sp 
 import orb_tools as ot 
 import models
@@ -441,7 +441,7 @@ class Simulation():
 
 
 
-        ylabels = ['$B_{north}$', '$B_{east}$', '$B_{down}$', '$|\mathbf{B}|$']
+        ylabels = ['$B_{north}$', '$B_{east}$', '$B_{down}$', '$|{B}|$']
         
         for sc in self.scs:
 
@@ -526,7 +526,7 @@ class Simulation():
         return earth 
 
 
-def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.csv", store_data=False):
+def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.csv", store_data=False, GPS=False):
     '''
     Generate the magnetic field data for a given orbit
     If store_data is True, the magnetic field data is saved to a CSV file in the OUTPUT_DIR folder
@@ -547,9 +547,15 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
         total_time (float): total time of the simulation (hours)
         timestep (float): time step of the simulation (seconds)
         file_name (str): name of CSV file
+        store_data (bool): whether to create CSV and store data within
+        GPS (bool): whether to return GPS data or not
 
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
+        if GPS:
+            return two elements: 
+                b fields (above)
+                GPS ( (3 x n) np.array): location for each time step in efec frame (km)
     '''
 
     # initialize simulation object (with time = current date and time)
@@ -575,6 +581,16 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
     # convert to uT (microTesla)
     B_earth = B_field * 1e-3
 
+    if GPS:
+        # scs[0].state_mat.X gives x in ECI frame
+        
+        # get x, y, z in ECEF frame (rotates with earth)
+        gps_x = sim.scs[0].state_mat.R_ECEF[:, 0]
+        gps_y = sim.scs[0].state_mat.R_ECEF[:, 1]
+        gps_z = sim.scs[0].state_mat.R_ECEF[:, 2]
+
+        gps_data = np.array(list(zip(gps_x, gps_y, gps_z)))
+
     if store_data:
         # Get the directory of the current script
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -596,7 +612,10 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
             
         print(f"Data saved to {output_path}")
 
-    return B_earth
+    if GPS:
+        return B_earth, gps_data
+    else:
+        return B_earth
 
 
 def get_orbit_data(file_name):
@@ -625,18 +644,20 @@ def get_orbit_data(file_name):
 
 
 if __name__ == '__main__':
-    '''
+    
     oe = [121, 6_800, 0.0000922, 51, -10, 80]
-    total_time = 1
+    total_time = 1 / 60
     timestep = 1.0
     file_name = "test.csv"
     store_data = True
 
-    generate_orbit_data(oe, total_time, timestep, file_name, store_data)
+    B_field, gps = generate_orbit_data(oe, total_time, timestep, file_name, False, True)
 
-    print(get_orbit_data(file_name))
-
+    print(gps)
+    # print(get_orbit_data(file_name))
     '''
+
+    
     # 3/21, 2022
     t0 = datetime.datetime(2022, 3, 21, 0, 0, 0)
     sim = Simulation(TIME = t0, mag_deg= 12)
@@ -742,5 +763,5 @@ if __name__ == '__main__':
     # np.savetxt('B_out.csv', (time_array, B_field[0, :] * 1e-3, B_field[1, :] * 1e-3, B_field[2, :] * 1e-3), delimiter = ',')
     plt.show()
 
-    
+    '''
 
