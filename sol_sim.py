@@ -548,7 +548,7 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
         timestep (float): time step of the simulation (seconds)
         file_name (str): name of CSV file
         store_data (bool): whether to create CSV and store data within
-        GPS (bool): whether to return GPS data or not
+        GPS (bool): whether to find and store GPS data (ECEF) or not
 
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
@@ -607,8 +607,13 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
             # Write header with simulation parameters
             f.write(f"# f={OE_array[0]},a={OE_array[1]},e={OE_array[2]},i={OE_array[3]},Om={OE_array[4]},w={OE_array[5]},total_time={total_time},timestep={timestep}\n")
             
-            # Write B-field data
-            np.savetxt(f, B_earth, delimiter=',', header='Bx,By,Bz', comments='')
+            if GPS:
+                # combine b field and gps data
+                combined_data = np.hstack((B_earth, gps_data))
+                np.savetxt(f, combined_data, delimiter=',', header='Bx,By,Bz,X,Y,Z', comments='')
+            else:
+                # Write B-field data
+                np.savetxt(f, B_earth, delimiter=',', header='Bx,By,Bz', comments='')
             
         print(f"Data saved to {output_path}")
 
@@ -618,12 +623,13 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
         return B_earth
 
 
-def get_orbit_data(file_name):
+def get_orbit_data(file_name, GPS):
     '''
     Get the magnetic field data from the specified CSV file in OUTPUT_DIR folder
 
     @params:
         file_name (str): name of the CSV file to get the data from
+        GPS (bool): whether gps data is in csv or not
 
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
@@ -635,12 +641,22 @@ def get_orbit_data(file_name):
     # Full path to output file
     output_path = os.path.join(script_dir, OUTPUT_DIR, file_name)
     
-    B_fields = np.genfromtxt(output_path, delimiter=',')
+    if GPS:
+        data = np.genfromtxt(output_path, delimiter=',')
 
-    # remove header
-    B_fields = B_fields[1:, :]
+        # extract magnetic field and gps data from csv
+        B_fields = data[1:, :3]
 
-    return B_fields
+        gps = data[1:, -3:]
+
+        return B_fields, gps
+    else:
+        B_fields = np.genfromtxt(output_path, delimiter=',')
+
+        # remove header
+        B_fields = B_fields[1:, :]
+
+        return B_fields
 
 
 if __name__ == '__main__':
@@ -649,9 +665,10 @@ if __name__ == '__main__':
     total_time = 1 / 60
     timestep = 1.0
     file_name = "test.csv"
-    store_data = True
+    store_data = False
+    generate_GPS = True
 
-    B_field, gps = generate_orbit_data(oe, total_time, timestep, file_name, False, True)
+    B_field, gps = generate_orbit_data(oe, total_time, timestep, file_name, store_data, generate_GPS)
 
     print(gps)
     # print(get_orbit_data(file_name))
