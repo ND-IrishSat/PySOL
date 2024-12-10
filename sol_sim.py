@@ -526,7 +526,7 @@ class Simulation():
         return earth 
 
 
-def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.csv", store_data=False, GPS=False):
+def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.csv", store_data=False, GPS=False, RAM=True):
     '''
     Generate the magnetic field data for a given orbit
     If store_data is True, the magnetic field data is saved to a CSV file in the OUTPUT_DIR folder
@@ -549,13 +549,16 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
         file_name (str): name of CSV file
         store_data (bool): whether to create CSV and store data within
         GPS (bool): whether to find and store GPS data (ECEF) or not
+        RAM (bool): whether to find and store RAM velocity vector (direction of travel) or not
 
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
         if GPS:
-            return two elements: 
-                b fields (above)
+            return additional element: 
                 GPS ( (3 x n) np.array): location for each time step in efec frame (km)
+        if RAM: 
+            return additional element:
+                RAM ( (3 x n) np.array): RAM velocity vector for each step (km/s)
     '''
 
     # initialize simulation object (with time = current date and time)
@@ -590,6 +593,13 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
         gps_z = sim.scs[0].state_mat.R_ECEF[:, 2]
 
         gps_data = np.array(list(zip(gps_x, gps_y, gps_z)))
+    
+    if RAM:
+        # extract orbital elements
+        orbital_elements = sim.scs[0].state_mat.OE_
+
+        # convert to position (eci) and velocity using orb tools function, then just take velocity
+        ram_velocity = np.array([ot.calc_OE2RV(element)[3:] for element in orbital_elements])
 
     if store_data:
         # Get the directory of the current script
@@ -617,7 +627,11 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
             
         print(f"Data saved to {output_path}")
 
+    if RAM and not GPS:
+        return B_earth, ram_velocity
     if GPS:
+        if RAM:
+            return B_earth, gps_data, ram_velocity
         return B_earth, gps_data
     else:
         return B_earth
@@ -667,10 +681,12 @@ if __name__ == '__main__':
     file_name = "test.csv"
     store_data = False
     generate_GPS = True
+    generate_RAM = True
 
-    B_field, gps = generate_orbit_data(oe, total_time, timestep, file_name, store_data, generate_GPS)
+    B_field, gps, ram = generate_orbit_data(oe, total_time, timestep, file_name, store_data, generate_GPS, generate_RAM)
 
-    print(gps)
+    # print(gps)
+    print(ram)
     # print(get_orbit_data(file_name))
     '''
 
