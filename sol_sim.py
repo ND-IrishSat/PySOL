@@ -596,10 +596,24 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
     
     if RAM:
         # extract orbital elements
-        orbital_elements = sim.scs[0].state_mat.OE_
+        # orbital_elements = sim.scs[0].state_mat.OE_
+        # convert to position/velocity (eci) using orb tools function
+        # pos_velocity = np.array([ot.calc_OE2RV(element) for element in orbital_elements])
 
-        # convert to position (eci) and velocity using orb tools function, then just take velocity
-        ram_velocity = np.array([ot.calc_OE2RV(element)[3:] for element in orbital_elements])
+        # get position and velocity in eci frame
+        eci_pos = sim.scs[0].state_mat.R_
+        eci_vel = sim.scs[0].state_mat.V_
+        # get datetime objects for every step
+        times = sim.scs[0].state_mat.times
+        ecef = []
+
+        for i in range(len(eci_pos)):
+            # find pos and velocity in ecef frame
+            pos, vel = ot.calc_ECEF_R(eci_pos[i], eci_vel[i], times[i])
+            ecef.append(np.concatenate((pos, vel)))
+
+        # extract ecef velocity from array
+        ram_velocity = np.array([a[3:] for a in ecef])
 
     if store_data:
         # Get the directory of the current script
@@ -686,7 +700,7 @@ if __name__ == '__main__':
     B_field, gps, ram = generate_orbit_data(oe, total_time, timestep, file_name, store_data, generate_GPS, generate_RAM)
 
     # print(gps)
-    print(ram)
+    print("ram: ", ram)
     # print(get_orbit_data(file_name))
     '''
 
