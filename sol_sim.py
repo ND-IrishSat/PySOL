@@ -651,13 +651,23 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
         return B_earth
 
 
-def get_orbit_data(file_name, GPS):
+def get_orbit_data(file_name, oe=None, total_time=None, timestep=None, GPS=False):
     '''
     Get the magnetic field data from the specified CSV file in OUTPUT_DIR folder
+    and check orbital parameters against those in the CSV file.
 
     @params:
         file_name (str): name of the CSV file to get the data from
-        GPS (bool): whether gps data is in csv or not
+        oe ( 1x6 array ): orbital elements of the spacecraft. 6 numbers to describe the shape and orientation of the orbit
+                f - true anomaly [deg]: angle between point closest to earth and current location
+                a - semi-major axis [km]: the distance from the center of an ellipse to the longer end of the ellipse=radius/altitude lol
+                e - eccentricity [0, 1): how stretched the ellipse is, circle = 0
+                i - inclination [deg]: angle between equator and orbit plane
+                Om - right ascension (RA) of ascending node [deg]: angle between ascending node and non-rotating coordinate system of earth (geocentric equatorial coordinate system)
+                w - argument of perigee/periapsis [deg]: angle between ascending node and point of closest approach to earth (periapsis)
+        total_time (float): total time for the orbit
+        timestep (float): timestep for the orbit
+        GPS (bool): whether GPS data is in csv or not
 
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
@@ -669,12 +679,41 @@ def get_orbit_data(file_name, GPS):
     # Full path to output file
     output_path = os.path.join(script_dir, OUTPUT_DIR, file_name)
     
+    # Read the first few lines to get orbital elements, total time, and timestep
+    with open(output_path, 'r') as file:
+        header_lines = [file.readline().strip() for _ in range(3)]
+    
+    # Parse the first line to get the orbital parameters
+    first_line = header_lines[0].split(',')
+    csv_orbital_elements = [
+        float(first_line[0].split('=')[1]),
+        float(first_line[1].split('=')[1]),
+        float(first_line[2].split('=')[1]),
+        float(first_line[3].split('=')[1]),
+        float(first_line[4].split('=')[1]),
+        float(first_line[5].split('=')[1])]
+
+    # Check if orbital elements match
+    for i, element in enumerate(oe):
+        if np.isclose(element, csv_orbital_elements[i]) == False:
+            raise ValueError(f"CSV has orbital elements: {csv_orbital_elements}.")
+
+    csv_total_time = float(first_line[6].split('=')[1])
+    csv_timestep = float(first_line[7].split('=')[1])
+
+    # Check if total time and timestep match
+    if total_time > csv_total_time:
+        raise ValueError(f"{total_time} is too long, CSV only has {csv_total_time} hours.")
+    
+    if not timestep == csv_timestep:
+        raise ValueError(f"Timestep mismatch: Expected {timestep}, got {csv_timestep}.")
+
+    # read the signified data
     if GPS:
         data = np.genfromtxt(output_path, delimiter=',')
 
         # extract magnetic field and gps data from csv
         B_fields = data[1:, :3]
-
         gps = data[1:, -3:]
 
         return B_fields, gps
