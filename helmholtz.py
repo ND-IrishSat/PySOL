@@ -1,247 +1,176 @@
-''' Module containing analytical models for the B field of the frames of the Helmholtz cage + Helmholtz cage
-    proper with all 6 frames implemented.
+''' 
+    Module containing analytical models for the B field of the frames of the Helmholtz cage + Helmholtz cage.
     
     by Juwan Jeremy Jacobe
+    Refactored by Andres Perez
     University of Notre Dame
-    IrishSat OAT Lab
+    IrishSat OAT Lab -> IrishSat Goat Lab
 '''
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 #####################################################################
-#     Frame X, Y, Z Classes                                         #
+#      Global Frame Classes                                         #
 #####################################################################
-# These FrameX, FrameY, and FrameZ classes are used to put together the HelmholtzCage class. The equations
-# for the B-Field are derived from the Biot-Savart Law
+# The original multi-frame classes have been refactored into a global frame class. The equations
+# for the B-field are derived from the Biot-Savart Law.
 #
-# With the way these are implemented right now, the code is redundant in making distinctions between
-# FrameX, FrameY and FrameZ as different objects. Ideally, we should have this written as one Frame class
-# (which even more ideally, is made up of a Wire class instead of having the constituent be a Frame class),
-# especially as the equations are mostly the same. 
+# Currently, it is implemented as one major class. However, future iterations could explore the idea
+# of having a Wire class to make up frames, as the equations are mostly the same!
 #
-# However, the effort to make this code more elegant is probably not worth the effort unless the
-# person in question reworking the code is very dedicated and also has a lot of downtime to funnel
-# into a pursuit with no price but pride :>
+# While this may not provide significant functional optimization, it offers a valuable learning opportunity
+# to understand the Helmholtz cage, Helmholtz coils, and magnetic fields in general.
 #
-# NOTE: The B-field from the frames are independently confirmed to be correct for simple cases such as B-field
-# at the center of the frame.
+# NOTE: The B-field calculations from the frames have been independently confirmed to be correct for
+# simple cases, such as the B-field at the center of the frame.
 
-# Frame displaced -x from the origin, generates +Bx components
-class FrameX():
-    def __init__(self, length, num, x_disp):
+class GlobalFrame():
+    def __init__(self, length, num, displacement, frame):
         
-        # x displacement the frame from the origin
-        self.x_disp = x_disp
- 
-        # y displacement of wires 1 and 3 from origin
-        self.y_disp1 = length/2
-        self.y_disp3 = -length/2
-        
-        # z displacement of wires 2 and 4 from origin
-        self.z_disp2 = length/2
-        self.z_disp4 = -length/2
-        
-        # Length of square + number of wires wrapped around
-        self.L = length
+        # Checks if frame is initialized correctly
+        if frame not in ["x", "y", "z"]:
+            raise ValueError("frame must be 'x', 'y', or 'z'")
+
+        # Constants:
+        self.length = length
         self.N = num
+        self.D = displacement 
+        self.frame = frame
         
-        self.mu_0 = 1.256637062e-6
-    
-        # Constant in front of Biot-Savart Law: mu_0*N/(4*pi)
+        # Constant in front of Biot-Savart Law: mu_0*N/(4*pi) and Permeability Constant
+            # We're leaving out current (A), I, for modularity purposes
+        self.mu_0 = 1.256637062e-6 
         self.const = self.mu_0*num/(4*np.pi)
-        
-    def get_B_factors(self, x, y, z):
-        
-        # integrated over z'
-        B1_integral_term1 = ( self.L - 2*z )/( np.sqrt( 4*( (x-self.x_disp)**2 + (y-self.y_disp1)**2 ) + (self.L - 2*z)**2 ) ) 
-        B1_integral_term2 = ( self.L + 2*z )/( np.sqrt( 4*( (x-self.x_disp)**2 + (y-self.y_disp1)**2 ) + (self.L + 2*z)**2 ) )
-        B1_integral = (B1_integral_term1 + B1_integral_term2)/( (x - self.x_disp)**2 + (y - self.y_disp1)**2 )
-
-        self.B1_factor = self.const * B1_integral 
-        
-        # integrated over y'
-        B2_integral_term1 = ( self.L - 2*y )/( np.sqrt(4 * ( (x-self.x_disp)**2 + (z-self.z_disp2)**2 ) + (self.L - 2*y)**2 ) )
-        B2_integral_term2 = ( self.L + 2*y )/( np.sqrt(4 * ( (x-self.x_disp)**2 + (z-self.z_disp2)**2 ) + (self.L + 2*y)**2 ) ) 
-        B2_integral = -(B2_integral_term1 + B2_integral_term2)/( (x - self.x_disp)**2 + (z - self.z_disp2)**2 )
-        
-        self.B2_factor = self.const * B2_integral
-        
-        # integrated over z'
-        B3_integral_term1 = ( -self.L + 2*z )/( np.sqrt( 4*( (x-self.x_disp)**2 + (y-self.y_disp3)**2 ) + (self.L - 2*z)**2 ) ) 
-        B3_integral_term2 = ( -self.L - 2*z )/( np.sqrt( 4*( (x-self.x_disp)**2 + (y-self.y_disp3)**2 ) + (self.L + 2*z)**2 ) )
-        B3_integral = (B3_integral_term1 + B3_integral_term2)/( (x - self.x_disp)**2 + (y - self.y_disp3)**2 )
-
-        self.B3_factor = self.const * B3_integral
-
-        # integrated over y'
-        B4_integral_term1 = ( -self.L + 2*y )/( np.sqrt( 4*( (x-self.x_disp)**2 + (z-self.z_disp4)**2 ) + (self.L - 2*y)**2 ) )
-        B4_integral_term2 = ( -self.L - 2*y )/( np.sqrt( 4*( (x-self.x_disp)**2 + (z-self.z_disp4)**2 ) + (self.L + 2*y)**2 ) )
-        B4_integral = -(B4_integral_term1 + B4_integral_term2) / ( (x - self.x_disp)**2 + (z - self.z_disp4)**2 )
-
-        self.B4_factor = self.const * B4_integral
-
-    def get_Bx(self, I, r):
     
-        x = r[0]
-        y = r[1]
-        z = r[2]
-        
-        self.get_B_factors(x, y, z)
-        
-        B_x = ( I*(-self.B1_factor*(y - self.y_disp1) + self.B2_factor*( z - self.z_disp2 ) + 
-            -self.B3_factor*(y - self.y_disp3) + self.B4_factor*( z - self.z_disp4 )) )
-        
-        return B_x
-        
-    def get_Bfield(self, I, r):
-        x = r[0]
-        y = r[1]
-        z = r[2]
-        
-        self.get_B_factors(x, y, z)
-        
-        B_x = ( I*(-self.B1_factor*(y - self.y_disp1) + self.B2_factor*( z - self.z_disp2 ) + 
-            -self.B3_factor*(y - self.y_disp3) + self.B4_factor*( z - self.z_disp4 )) )
+        # Set displacements based on frame orientation
+        if frame == "x":
+            # Frame parallel to z-y plane
+            # x displacement the frame from the origin
+            self.primary_disp = displacement
+            self.side1_disp = length / 2    # y displacement of wire 1
+            self.side2_disp = length / 2    # z displacement of wire 2
+            self.side3_disp = -length / 2   # y displacement of wire 3
+            self.side4_disp = -length / 2   # z displacement of wire 4
+        elif frame == "y":
+            # Frame parallel to x-z plane
+            self.primary_disp = displacement
+            self.side1_disp = -length / 2   # x displacement of wire 1
+            self.side2_disp = length / 2    # z displacement of wire 2
+            self.side3_disp = length / 2    # x displacement of wire 3
+            self.side4_disp = -length / 2   # z displacement of wire 4
+        elif frame == "z":
+            # Frame parallel to x-y plane
+            self.primary_disp = displacement
+            self.side1_disp = length / 2    # y displacement of wire 1
+            self.side3_disp = -length / 2   # y displacement of wire 3
+            self.side2_disp = -length / 2   # x displacement of wire 2
+            self.side4_disp = length / 2    # x displacement of wire 4
+    
+    def get_B_factors(self,x,y,z):
+        if self.frame == "x":
+            # integrated over z'
+            B1_integral_term1 = (self.length - 2 * z) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (y - self.side1_disp) ** 2) + (self.length - 2 * z) ** 2)
+            B1_integral_term2 = (self.length + 2 * z) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (y - self.side1_disp) ** 2) + (self.length + 2 * z) ** 2)
+            B1_integral = (B1_integral_term1 + B1_integral_term2) / ((x - self.primary_disp) ** 2 + (y - self.side1_disp) ** 2)
             
-        B_y = ( I*(self.B1_factor*(x - self.x_disp) + (self.B3_factor* (x-self.x_disp) )) )
-        
-        B_z = ( I* ( -self.B2_factor*(x - self.x_disp) + -(self.B4_factor * (x - self.x_disp) )) )
-        
-        return np.array([B_x, B_y, B_z])
+            # integrated over y'
+            B2_integral_term1 = (self.length - 2 * y) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (z - self.side2_disp) ** 2) + (self.length - 2 * y) ** 2)
+            B2_integral_term2 = (self.length + 2 * y) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (z - self.side2_disp) ** 2) + (self.length + 2 * y) ** 2)
+            B2_integral = -(B2_integral_term1 + B2_integral_term2) / ((x - self.primary_disp) ** 2 + (z - self.side2_disp) ** 2)
+            
+            # integrated over z'
+            B3_integral_term1 = (-self.length + 2 * z) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (y - self.side3_disp) ** 2) + (self.length - 2 * z) ** 2)
+            B3_integral_term2 = (-self.length - 2 * z) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (y - self.side3_disp) ** 2) + (self.length + 2 * z) ** 2)
+            B3_integral = (B3_integral_term1 + B3_integral_term2) / ((x - self.primary_disp) ** 2 + (y - self.side3_disp) ** 2)
+            
+            # integrated over y'
+            B4_integral_term1 = (-self.length + 2 * y) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (z - self.side4_disp) ** 2) + (self.length - 2 * y) ** 2)
+            B4_integral_term2 = (-self.length - 2 * y) / np.sqrt(4 * ((x - self.primary_disp) ** 2 + (z - self.side4_disp) ** 2) + (self.length + 2 * y) ** 2)
+            B4_integral = -(B4_integral_term1 + B4_integral_term2) / ((x - self.primary_disp) ** 2 + (z - self.side4_disp) ** 2)
 
+        elif self.frame == "y":
+            # integrated over z'
+            B1_integral_term1 = (self.length - 2 * z) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (x - self.side1_disp) ** 2) + (self.length - 2 * z) ** 2)
+            B1_integral_term2 = (self.length + 2 * z) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (x - self.side1_disp) ** 2) + (self.length + 2 * z) ** 2)
+            B1_integral = (B1_integral_term1 + B1_integral_term2) / ((y - self.primary_disp) ** 2 + (x - self.side1_disp) ** 2)
+            
+            # integrated over x'
+            B2_integral_term1 = (self.length - 2 * x) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (z - self.side2_disp) ** 2) + (self.length - 2 * x) ** 2)
+            B2_integral_term2 = (self.length + 2 * x) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (z - self.side2_disp) ** 2) + (self.length + 2 * x) ** 2)
+            B2_integral = (B2_integral_term1 + B2_integral_term2) / ((y - self.primary_disp) ** 2 + (z - self.side2_disp) ** 2)
+            
+            # integrated over z'
+            B3_integral_term1 = (-self.length + 2 * z) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (x - self.side3_disp) ** 2) + (self.length - 2 * z) ** 2)
+            B3_integral_term2 = (-self.length - 2 * z) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (x - self.side3_disp) ** 2) + (self.length + 2 * z) ** 2)
+            B3_integral = (B3_integral_term1 + B3_integral_term2) / ((y - self.primary_disp) ** 2 + (x - self.side3_disp) ** 2)
 
-class FrameY():
-    def __init__(self, length, num, y_disp):
-        
-        # x displacement the frame from the origin
-        self.y_disp = y_disp
- 
-        # y displacement of wires 1 and 3 from origin
-        self.x_disp1 = -length/2
-        self.x_disp3 = length/2
-        
-        # z displacement of wires 2 and 4 from origin
-        self.z_disp2 = length/2
-        self.z_disp4 = -length/2
-        
-        # Length of square + number of wires wrapped around
-        self.L = length
-        self.N = num
+            # integrated over x'
+            B4_integral_term1 = (-self.length + 2 * x) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (z - self.side4_disp) ** 2) + (self.length - 2 * x) ** 2)
+            B4_integral_term2 = (-self.length - 2 * x) / np.sqrt(4 * ((y - self.primary_disp) ** 2 + (z - self.side4_disp) ** 2) + (self.length + 2 * x) ** 2)
+            B4_integral = (B4_integral_term1 + B4_integral_term2) / ((y - self.primary_disp) ** 2 + (z - self.side4_disp) ** 2)
 
-        # Vacuum permeability
-        self.mu_0 = 1.256637062e-6
-    
-        # Constant in front of Biot-Savart Law: mu_0*N/(4*pi)
-        self.const = self.mu_0*num/(4*np.pi)
-        
-    def get_B_factors(self, x, y, z):
-        
-        # integrated over z'
-        B1_integral_term1 = ( self.L - 2*z )/( np.sqrt( 4*( (x-self.x_disp1)**2 + (y-self.y_disp)**2 ) + (self.L - 2*z)**2 ) ) 
-        B1_integral_term2 = ( self.L + 2*z )/( np.sqrt( 4*( (x-self.x_disp1)**2 + (y-self.y_disp)**2 ) + (self.L + 2*z)**2 ) )
-        B1_integral = (B1_integral_term1 + B1_integral_term2)/( (x - self.x_disp1)**2 + (y - self.y_disp)**2 )
-        
-        # integrated over x'
-        B2_integral_term1 = ( self.L - 2*x )/( np.sqrt(4 * ( (y-self.y_disp)**2 + (z-self.z_disp2)**2 ) + (self.L - 2*x)**2 ) )
-        B2_integral_term2 = ( self.L + 2*x )/( np.sqrt(4 * ( (y-self.y_disp)**2 + (z-self.z_disp2)**2 ) + (self.L + 2*x)**2 ) ) 
-        B2_integral = (B2_integral_term1 + B2_integral_term2)/( (y - self.y_disp)**2 + (z - self.z_disp2)**2 )
-        
-        # integrated over z'
-        B3_integral_term1 = ( -self.L + 2*z )/( np.sqrt( 4*( (x-self.x_disp3)**2 + (y-self.y_disp)**2 ) + (self.L - 2*z)**2 ) ) 
-        B3_integral_term2 = ( -self.L - 2*z )/( np.sqrt( 4*( (x-self.x_disp3)**2 + (y-self.y_disp)**2 ) + (self.L + 2*z)**2 ) )
-        B3_integral = (B3_integral_term1 + B3_integral_term2)/( (x - self.x_disp3)**2 + (y - self.y_disp)**2 )
-        
-        # integrated over x'
-        B4_integral_term1 = ( -self.L + 2*x )/( np.sqrt(4 * ( (y-self.y_disp)**2 + (z-self.z_disp4)**2 ) + (self.L - 2*x)**2 ) )
-        B4_integral_term2 = ( -self.L - 2*x )/( np.sqrt(4 * ( (y-self.y_disp)**2 + (z-self.z_disp4)**2 ) + (self.L + 2*x)**2 ) ) 
-        B4_integral = (B4_integral_term1 + B4_integral_term2)/( (y - self.y_disp)**2 + (z - self.z_disp4)**2 )
-        
+        elif self.frame == "z":
+            # integrated over x'
+            B1_integral_term1 = (-self.length + 2 * x) / np.sqrt(4 * ((y - self.side1_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length - 2 * x) ** 2)
+            B1_integral_term2 = (-self.length - 2 * x) / np.sqrt(4 * ((y - self.side1_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length + 2 * x) ** 2)
+            B1_integral = (B1_integral_term1 + B1_integral_term2) / ((y - self.side1_disp) ** 2 + (z - self.primary_disp) ** 2)
+            
+            # integrated over y'
+            B2_integral_term1 = (self.length - 2 * y) / np.sqrt(4 * ((x - self.side2_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length - 2 * y) ** 2)
+            B2_integral_term2 = (self.length + 2 * y) / np.sqrt(4 * ((x - self.side2_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length + 2 * y) ** 2)
+            B2_integral = -(B2_integral_term1 + B2_integral_term2) / ((x - self.side2_disp) ** 2 + (z - self.primary_disp) ** 2)
+            
+            # integrated over x'
+            B3_integral_term1 = (self.length - 2 * x) / np.sqrt(4 * ((y - self.side3_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length - 2 * x) ** 2)
+            B3_integral_term2 = (self.length + 2 * x) / np.sqrt(4 * ((y - self.side3_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length + 2 * x) ** 2)
+            B3_integral = (B3_integral_term1 + B3_integral_term2) / ((y - self.side3_disp) ** 2 + (z - self.primary_disp) ** 2)
+            
+            # integrated over y'
+            B4_integral_term1 = (-self.length + 2 * y) / np.sqrt(4 * ((x - self.side4_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length - 2 * y) ** 2)
+            B4_integral_term2 = (-self.length - 2 * y) / np.sqrt(4 * ((x - self.side4_disp) ** 2 + (z - self.primary_disp) ** 2) + (self.length + 2 * y) ** 2)
+            B4_integral = -(B4_integral_term1 + B4_integral_term2) / ((x - self.side4_disp) ** 2 + (z - self.primary_disp) ** 2)
+            
         self.B1_factor = self.const * B1_integral 
         self.B2_factor = self.const * B2_integral 
         self.B3_factor = self.const * B3_integral 
         self.B4_factor = self.const * B4_integral
-
-    def get_Bfield(self, I, r):
-        x = r[0]
-        y = r[1]
-        z = r[2]
-        
-        self.get_B_factors(x, y, z)
-        
-        B_x = ( I * ( -self.B1_factor * (y - self.y_disp) + -self.B3_factor * (y - self.y_disp) ) )
-        
-        B_y = ( I * ( self.B1_factor * (x - self.x_disp1) + -self.B2_factor * (z - self.z_disp2) + self.B3_factor * (x - self.x_disp3)
-            + -self.B4_factor * (z - self.z_disp4) ) )
-        B_z = ( I * ( self.B2_factor * (y - self.y_disp) + self.B4_factor * (y - self.y_disp)) )
-        
-        return np.array([B_x, B_y, B_z])
-        
-class FrameZ():
-    def __init__(self, length, num, z_disp):
-        
-        # z displacement of frame from the origin
-        self.z_disp = z_disp
-        
-        # y displacement of wires 1 and 3 from origin
-        self.y_disp1 = length/2
-        self.y_disp3 = -length/2
-        
-        # x displacement of wires 2 and 4 from origin
-        self.x_disp2 = -length/2
-        self.x_disp4 = length/2
-        
-        # Length of square + number of wires wrapped around
-        self.L = length
-        self.N = num
-        
-        self.mu_0 = 1.256637062
     
-        # Constant in front of Biot-Savart Law: mu_0*N/(4*pi)
-        self.const = self.mu_0*num/(4*np.pi)
-        
-    def get_B_factors(self, x, y, z):
-        
-        # integrated over x'
-        B1_integral_term1 = ( -self.L + 2*x )/( np.sqrt(4 * ( (y-self.y_disp1)**2 + (z-self.z_disp)**2 ) + (self.L - 2*x)**2 ) )
-        B1_integral_term2 = ( -self.L - 2*x )/( np.sqrt(4 * ( (y-self.y_disp1)**2 + (z-self.z_disp)**2 ) + (self.L + 2*x)**2 ) ) 
-        B1_integral = (B1_integral_term1 + B1_integral_term2)/( (y - self.y_disp1)**2 + (z - self.z_disp)**2 )
-        
-        self.B1_factor = self.const * B1_integral 
-        
-        # integrated over y'
-        B2_integral_term1 = ( self.L - 2*y )/( np.sqrt(4 * ( (x-self.x_disp2)**2 + (z-self.z_disp)**2 ) + (self.L - 2*y)**2 ) )
-        B2_integral_term2 = ( self.L + 2*y )/( np.sqrt(4 * ( (x-self.x_disp2)**2 + (z-self.z_disp)**2 ) + (self.L + 2*y)**2 ) ) 
-        B2_integral = -(B2_integral_term1 + B2_integral_term2)/( (x - self.x_disp2)**2 + (z - self.z_disp)**2 )
-        
-        self.B2_factor = self.const * B2_integral
-        
-        # integrated over x'
-        B3_integral_term1 = ( self.L - 2*x )/( np.sqrt(4 * ( (y-self.y_disp3)**2 + (z-self.z_disp)**2 ) + (self.L - 2*x)**2 ) )
-        B3_integral_term2 = ( self.L + 2*x )/( np.sqrt(4 * ( (y-self.y_disp3)**2 + (z-self.z_disp)**2 ) + (self.L + 2*x)**2 ) ) 
-        B3_integral = (B3_integral_term1 + B3_integral_term2)/( (y - self.y_disp3)**2 + (z - self.z_disp)**2 )
-
-        self.B3_factor = self.const * B3_integral
-
-        # integrated over y'
-        B4_integral_term1 = ( -self.L + 2*y )/( np.sqrt( 4*( (x-self.x_disp4)**2 + (z-self.z_disp)**2 ) + (self.L - 2*y)**2 ) )
-        B4_integral_term2 = ( -self.L - 2*y )/( np.sqrt( 4*( (x-self.x_disp4)**2 + (z-self.z_disp)**2 ) + (self.L + 2*y)**2 ) )
-        B4_integral = -(B4_integral_term1 + B4_integral_term2) / ( (x - self.x_disp4)**2 + (z - self.z_disp)**2 )
-
-        self.B4_factor = self.const * B4_integral
-        
     def get_Bfield(self, I, r):
-        x = r[0]
-        y = r[1]
-        z = r[2]
-        
-        self.get_B_factors(x, y, z)
-        
-        B_x = ( I * ( -self.B2_factor * (z - self.z_disp) + -self.B4_factor * (z - self.z_disp) ) )
-        B_y = ( I * ( self.B1_factor * (z - self.z_disp) + self.B3_factor * (z - self.z_disp) ) )
-        B_z = ( I * ( self.B1_factor * (y - self.y_disp1) + -self.B2_factor * (x - self.x_disp2) + self.B3_factor * 
-            (y - self.y_disp3) + -self.B4_factor * (x - self.x_disp4) ) )
+        ''' 
+            get_BfieldMM() - Takes the wire's magnetic field generated in 'get_B_factors()'
+                            and multiplies it by the current. This calculates the coil's x, y, and z 
+                            magnetic field components.
             
+            Args:
+                I (A)   : current
+                r       : a position vector represented by a tuple/vector/array holding the values of x, y, and z,
+        '''
+        # r = [x, y, z]
+        x, y, z = r
+        self.get_B_factors(x, y, z)
+
+        if self.frame == "x":
+            # Frame parallel to the y-z plane
+            B_x = I * (-self.B1_factor * (y - self.side1_disp) + self.B2_factor * (z - self.side2_disp) +
+                    -self.B3_factor * (y - self.side3_disp) + self.B4_factor * (z - self.side4_disp))
+            B_y = I * (self.B1_factor * (x - self.primary_disp) + self.B3_factor * (x - self.primary_disp))
+            B_z = I * (-self.B2_factor * (x - self.primary_disp) + -self.B4_factor * (x - self.primary_disp))
+
+        elif self.frame == "y":
+            # Frame parallel to the x-z plane
+            B_x = I * (-self.B1_factor * (z - self.side2_disp) + -self.B3_factor * (z - self.side4_disp))
+            B_y = I * (self.B1_factor * (x - self.side1_disp) + -self.B2_factor * (z - self.side2_disp) +
+                    self.B3_factor * (x - self.side3_disp) + -self.B4_factor * (z - self.side4_disp))
+            B_z = I * (self.B2_factor * (y - self.primary_disp) + self.B4_factor * (y - self.primary_disp))
+
+        elif self.frame == "z":
+            # Frame parallel to the x-y plane
+            B_x = I * (-self.B2_factor * (z - self.primary_disp) + -self.B4_factor * (z - self.primary_disp))
+            B_y = I * (self.B1_factor * (z - self.primary_disp) + self.B3_factor * (z - self.primary_disp))
+            B_z = I * (self.B1_factor * (y - self.side1_disp) + -self.B2_factor * (x - self.side2_disp) +
+                    self.B3_factor * (y - self.side3_disp) + -self.B4_factor * (x - self.side4_disp))
+
         return np.array([B_x, B_y, B_z])
 
 ###############################################################
@@ -263,23 +192,23 @@ class HelmholtzCage():
                 z_disp: displacements of frames generating B_z from origin, where the origin is the center of the cage
         '''
         
-        # Frame generating +B_x, displaced -x_disp from origin
-        self.frame_xminus = FrameX(length, num, -x_disp)
-        
+        # Frame generating +B_x, displaced -x_disp from origin)
+        self.frame_xminus = GlobalFrame(length=length, num=num, displacement=-x_disp, frame='x')
+
         # Frame generating -B_x, displace +x_disp from origin
-        self.frame_xplus = FrameX(length, num, x_disp)
-        
+        self.frame_xplus = GlobalFrame(length=length, num=num, displacement=x_disp, frame='x')
+
         # Frame generating +B_y, displaced -y_disp from origin
-        self.frame_yminus = FrameY(length, num, -y_disp)
+        self.frame_yminus = GlobalFrame(length=length, num=num, displacement=-y_disp, frame='y')
         
         # Frame generating -B_y, displaced +y_disp from origin
-        self.frame_yplus = FrameY(length, num, y_disp)
+        self.frame_yplus = GlobalFrame(length=length, num=num, displacement=y_disp, frame='y')
         
         # Frame generating +B_z, displaced -z_disp from origin
-        self.frame_zminus = FrameZ(length, num, -z_disp)
+        self.frame_zminus = GlobalFrame(length=length, num=num, displacement=-z_disp, frame='z')
         
         # Frame generating -B_z, displaced +z_disp from origin
-        self.frame_zplus = FrameZ(length, num, z_disp)
+        self.frame_zplus = GlobalFrame(length=length, num=num, displacement=z_disp, frame='z')
         
         # Create tuple of all frames together, for coding elegance purposes :>
         self.cage = (self.frame_xminus, self.frame_xplus, self.frame_yminus, self.frame_yplus, self.frame_zminus, self.frame_zplus)
@@ -315,33 +244,32 @@ class HelmholtzCage():
             Args:
                 frame: a FrameX, FrameY, or FrameZ object
         '''
-        if isinstance(frame, FrameX):
-            vertix1 = [frame.x_disp, frame.y_disp1, frame.z_disp2]
-            vertix2 = [frame.x_disp, frame.y_disp3, frame.z_disp2]
-            vertix3 = [frame.x_disp, frame.y_disp3, frame.z_disp4]
-            vertix4 = [frame.x_disp, frame.y_disp1, frame.z_disp4]
-        elif isinstance(frame, FrameY):
-            vertix1 = [frame.x_disp1, frame.y_disp, frame.z_disp2]
-            vertix2 = [frame.x_disp3, frame.y_disp, frame.z_disp2]
-            vertix3 = [frame.x_disp3, frame.y_disp, frame.z_disp4]
-            vertix4 = [frame.x_disp1, frame.y_disp, frame.z_disp4]
-        elif isinstance(frame, FrameZ):
-            vertix1 = [frame.x_disp2, frame.y_disp1, frame.z_disp]
-            vertix2 = [frame.x_disp2, frame.y_disp3, frame.z_disp]
-            vertix3 = [frame.x_disp4, frame.y_disp3, frame.z_disp]
-            vertix4 = [frame.x_disp4, frame.y_disp1, frame.z_disp]
-            
+        if (frame==self.frame_xminus or frame==self.frame_xplus):
+            vertix1 = [frame.primary_disp, frame.side1_disp, frame.side2_disp]
+            vertix2 = [frame.primary_disp, frame.side3_disp, frame.side2_disp]
+            vertix3 = [frame.primary_disp, frame.side3_disp, frame.side4_disp]
+            vertix4 = [frame.primary_disp, frame.side1_disp, frame.side4_disp]
+        if (frame==self.frame_yminus or frame==self.frame_yplus):
+            vertix1 = [frame.side1_disp, frame.primary_disp, frame.side2_disp]
+            vertix2 = [frame.side3_disp, frame.primary_disp, frame.side2_disp]
+            vertix3 = [frame.side3_disp, frame.primary_disp, frame.side4_disp]
+            vertix4 = [frame.side1_disp, frame.primary_disp, frame.side4_disp]
+        if (frame==self.frame_zminus or frame==self.frame_zplus):
+            vertix1 = [frame.side2_disp, frame.side1_disp, frame.primary_disp]
+            vertix2 = [frame.side2_disp, frame.side3_disp, frame.primary_disp]
+            vertix3 = [frame.side4_disp, frame.side3_disp, frame.primary_disp]
+            vertix4 = [frame.side4_disp, frame.side1_disp, frame.primary_disp]
+                
         return np.array([vertix1, vertix2, vertix3, vertix4, vertix1])
         
     def draw_cage(self, ax):
         ''' Draws cage on a figure
-            
             Arg: 
                 ax (Figure): figure object to plot cage onto
         '''
-        
         for frame in self.cage:
             verts = self.calc_frame_vertices(frame)
+            print(verts)
             ax.plot(verts[:, 0], verts[:, 1], verts[:, 2], marker = 'o', color = 'blue')
             
     def plot_Bfield(self, xlim, ylim, zlim, grid_num = 4, I_xminus=0.1, I_xplus= 0.1, I_yminus=0, I_yplus= 0, I_zminus= 0, I_zplus= 0):
@@ -372,7 +300,7 @@ class HelmholtzCage():
         B_cage_z = np.zeros((grid_num, grid_num, grid_num))
         
         # Find Bx, By, Bz for every x, y, z combination
-        # Is what I'm doing naughty here? Yes. Is there another way to do it? Probably. Can it be easily implemented? Who knows?
+        # Is what I'm doing naughty here? Yes. Is there another way to do it? Probably. Can it be easily implexmented? Who knows?
         for i in range(grid_num):
             for j in range(grid_num):
                 for k in range(grid_num):
