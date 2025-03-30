@@ -541,7 +541,9 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
                 e - eccentricity [0, 1): how stretched the ellipse is, circle = 0
             Orient 2D ellipse in 3D:
                 i - inclination [deg]: angle between equator and orbit plane
+                    NOTE: bugs out halfway around orbit if 90 (b field x and y swap)
                 Om - right ascension (RA) of ascending node [deg]: angle between ascending node and non-rotating coordinate system of earth (geocentric equatorial coordinate system)
+                    NOTE: cannot be 0, also bugs out if 90
                 w - argument of perigee/periapsis [deg]: angle between ascending node and point of closest approach to earth (periapsis)
 
         total_time (float): total time of the simulation (hours)
