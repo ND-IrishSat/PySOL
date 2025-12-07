@@ -704,10 +704,10 @@ def get_orbit_data(file_name, oe=None, total_time=None, timestep=None, GPS=False
     csv_timestep = float(first_line[7].split('=')[1])
 
     # Check if total time and timestep match
-    if total_time > csv_total_time:
+    if total_time is not None and total_time > csv_total_time:
         raise ValueError(f"{total_time} is too long, CSV only has {csv_total_time} hours.")
-    
-    if not timestep == csv_timestep:
+
+    if timestep is not None and not timestep == csv_timestep:
         raise ValueError(f"Timestep mismatch: Expected {timestep}, got {csv_timestep}.")
 
     # read the signified data
