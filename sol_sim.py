@@ -696,9 +696,10 @@ def get_orbit_data(file_name, oe=None, total_time=None, timestep=None, GPS=False
         float(first_line[5].split('=')[1])]
 
     # Check if orbital elements match
-    for i, element in enumerate(oe):
-        if np.isclose(element, csv_orbital_elements[i]) == False:
-            raise ValueError(f"CSV has orbital elements: {csv_orbital_elements}.")
+    if oe is not None:
+        for i, element in enumerate(oe):
+            if np.isclose(element, csv_orbital_elements[i]) == False:
+                raise ValueError(f"CSV has orbital elements: {csv_orbital_elements}.")
 
     csv_total_time = float(first_line[6].split('=')[1])
     csv_timestep = float(first_line[7].split('=')[1])
