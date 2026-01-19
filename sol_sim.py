@@ -2,11 +2,17 @@
 sol_sim.py
 Author: Jeremy Juwan, added to by Andrew Gaylord
 
-Contains main simulation class and supporting functions for PySOL repository. 
+Contains main simulation class and supporting functions for PySOL repository.
 
 Newest interface functions:
     generate_orbit_data (generates orbit data and stores in CSV file)
     get_orbit_data (retrieves orbit data from CSV file)
+
+To use, import PySOL in specific order:
+    import Simulator.PySOL.wmm as wmm
+    from Simulator.PySOL.sol_sim import *
+    import Simulator.PySOL.spacecraft as sp
+    import Simulator.PySOL.orb_tools as ot
 
 """
 
@@ -16,9 +22,9 @@ OUTPUT_DIR = 'outputs'
 from itertools import count
 from math import remainder
 from time import strftime
-from tkinter.tix import DisplayStyle
-import spacecraft as sp 
-import orb_tools as ot 
+# from tkinter.tix import DisplayStyle
+import spacecraft as sp
+import orb_tools as ot
 import models
 import astropy.time as astro_time
 
@@ -54,7 +60,7 @@ countries = gpd.read_file(geodatasets.get_path('naturalearth.land'))
 # # cities = gpd.read_file(
 # #  gpd.datasets.get_path("naturalearth_cities")
 # # )
-# # Read Graticules 
+# # Read Graticules
 # graticules = gpd.read_file(
 #  "ne_110m_graticules_10/ne_110m_graticules_10.shp"
 # )
@@ -67,13 +73,13 @@ class Simulation():
 
                 Opt. Args:
                     model_name (str) :
-                        Dynamical model name 
+                        Dynamical model name
                         Current dynamical models:
                             ['Two-Body']
                     mag_deg (int): [1-12]
                         degree of the WMM model Legendre polynomial
 
-                    TIME (dt.datetime object) : 
+                    TIME (dt.datetime object) :
                         UTC time to initialize simulation
                         if None, sim time set to current UTC
 
@@ -85,9 +91,13 @@ class Simulation():
         # Generate dynamical model object
         self.model_nm = model_name
 
-        ####!!!!!!! FLAG 
+        ####!!!!!!! FLAG
         model = models.Orbital_Models(model_name)
-        wmm_model = WMM(mag_deg, 'WMMcoef.csv')
+        # find the directory of current file and append to get absolute path
+        wmm_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WMMcoef.csv')
+
+        # wmm_model = WMM(mag_deg, 'WMMcoef.csv')
+        wmm_model = WMM(mag_deg, wmm_path)
 
         self.mag_model = wmm_model
 
@@ -97,9 +107,9 @@ class Simulation():
         # Set simulation clock
         if TIME == None:
             self.t0  = datetime.datetime.utcnow()
-            self.time = self.t0 
+            self.time = self.t0
         else:
-            self.t0 = TIME 
+            self.t0 = TIME
             self.time = TIME
 
         # Intitialize spacecraft and sim time lists
@@ -116,7 +126,7 @@ class Simulation():
 
                 Args:
                     OE_array (OE_array obj): OE_array object to initialize sc
-        
+
                 Returns:
                     sc (sc obj): spacecraft object
         """
@@ -129,7 +139,7 @@ class Simulation():
 
         return sc
 
-    def propogate(self, DT, resolution = 10, tol = [1e-7, 1e-4], integrator = 'RK45', 
+    def propogate(self, DT, resolution = 10, tol = [1e-7, 1e-4], integrator = 'RK45',
         event_func = None):
         """
             propogate - propogates sc and simulation forward in time using dynamical model
@@ -138,7 +148,7 @@ class Simulation():
                 DT (datetime.timedelta) : time of integration
                 resolution (float) : output time spacing in seconds
                 tol (1x2 list) : tolerance of RK integrator
-                integrator (str) : num. integration method to use 
+                integrator (str) : num. integration method to use
                     ['RK23', 'RK45', 'DOP853', 'Radau']
                 event_func (function) : function to record events
 
@@ -153,7 +163,7 @@ class Simulation():
         # Propogate each sc and record output to sc object
         for i, sc in enumerate(self.scs):
             sc_props = self.propogate_func(sc, dt_seconds, n_outputs, tol, integrator, event_func)
-            
+
             # Add new datetime objects to sc time list
             t_s = sc_props[1]
             times = []
@@ -165,7 +175,7 @@ class Simulation():
             states = sc_props[0]
             self.scs[i].set_states(states[1:], times[1:])### First item is a repeat of init
             self.scs[i].set_times(times[1:])
-        
+
         # Set the sim time to the last sc recorded time
         self.time = times[-1]
         self.times = times
@@ -173,14 +183,14 @@ class Simulation():
     def propogate_func(self, sc, dt_sec, n_outputs, tol, integrator, event_func):
         """
             propogate_func:
-                function for use in the simulation.propogate_parallel, 
+                function for use in the simulation.propogate_parallel,
                     simulation.propogate methods
 
                     Args:
                         sc (sc object): sc object for propogation
                         tau_f (float): final non-dim time
                         n_outputs (int): number of integration outputs
-                                        (NOT # of integration steps!) 
+                                        (NOT # of integration steps!)
                         tol (tuple): absolute and relative intergation tolerance, set to
                             [1e-12, 1e-10] for high precision
                         event_func: func to record events
@@ -191,8 +201,8 @@ class Simulation():
 
                     Opt. Returns:
                         y_hits: states at event triggers
-                        t_hits: times at event triggers 
-                         
+                        t_hits: times at event triggers
+
         """
 
         # Set up integration
@@ -201,7 +211,7 @@ class Simulation():
         t_eval = np.linspace(0, dt_sec, n_outputs)
 
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html
-        # Numerical integration 
+        # Numerical integration
         sol = sci.solve_ivp(
             fun = self.state_func,  # Integrtion func
             y0 = state,             # Initial state
@@ -230,14 +240,18 @@ class Simulation():
         for sc in self.scs:
             sc.calc_B(mag_model = self.mag_model)
 
-    def save_sim(self, file_name = None, save_states = True, save_times = True, 
+    def save_sim(self, file_name = None, save_states = True, save_times = True,
                     save_B = False):
 
         if file_name == None:
             file_name = datetime.datetime.now().strftime("%Y-%m-%d_PySol")
         file_path = 'save_sim/{}.hdf5'.format(file_name)
 
-        ### Handles multiple saved files for a given day, run
+        # append current file path to file_path to get absolute path
+        # find directory of current file and append to get absolute path
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), file_path)
+
+        ### if file already exists, append a number to the end of the file name
         exists = os.path.exists(file_path)
         i = 0
         while exists == True:
@@ -245,15 +259,16 @@ class Simulation():
             i_str = str(i)
             temp_name = '_'.join([file_name, i_str])
             temp_path = 'save_sim/{}.hdf5'.format(temp_name)
+            temp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), temp_path)
             exists = os.path.exists(temp_path)
         if i >0:
             file_path = temp_path
         #######################################################
-            
+
 
         sc = self.scs[0] # only saving the first spacecraft trajectory
         ST_MT = sc.state_mat
-        # Open file 
+        # Open file
         f = h5py.File(file_path, "a")
 
         f.attrs['t0'] = astro_time.Time(self.t0).jd
@@ -261,7 +276,7 @@ class Simulation():
 
         times = ST_MT.times
         dt = times[3] - times[2]
-        f.attrs['dt'] = datetime.total_seconds()
+        f.attrs['dt'] = dt.total_seconds()
 
         f.attrs['N Sc'] = len(self.scs)
         f.attrs['Dyn Model'] = self.model_nm
@@ -317,9 +332,9 @@ class Simulation():
 
         print('HDF5 file saving is donezo..')
         print('Simulation file saved to ' + file_path)
-            
 
-    def plot_orbit(self, D2 = False, tau_f = None, Earth = True, 
+
+    def plot_orbit(self, D2 = False, tau_f = None, Earth = True,
         lims = [8000, 8000, 8000], IJK = True):
 
         # plt.rcParams.update({'font.sans-serif': 'Helvetica'})
@@ -335,7 +350,7 @@ class Simulation():
                 earth = self.__earth_2d()
                 ax.add_artist(earth)
         else:
-            
+
             fig = plt.figure(figsize = [8, 8])
             ax = fig.add_subplot(projection = '3d')
             ax.set_xlim(-xlim, xlim)
@@ -349,7 +364,7 @@ class Simulation():
 
             if Earth:
                 earth = self.__earth_3d()
-                ax.plot_wireframe(earth[0], earth[1], earth[2], 
+                ax.plot_wireframe(earth[0], earth[1], earth[2],
                     color = 'mediumblue', alpha = 0.1, zorder = 0)
 
             if IJK:
@@ -363,7 +378,7 @@ class Simulation():
 
         tf = self.scs[0].state_mat.times[-1]
         t0 = self.scs[0].state_mat.times[0]
-        
+
         ax.set_title('PySOL | ECI | Dynamics: {} | '.format(self.model_nm) + t0.strftime('%Y/%m/%d') +
             '\n' + t0.strftime('%H:%M:%S – ') + tf.strftime('%H:%M:%S UTC'))
         for sc in self.scs:
@@ -374,7 +389,7 @@ class Simulation():
             Y = sc.state_mat.Y
             Z = sc.state_mat.Z
             ax.plot(X, Y, Z, color = sc.color, zorder = 2)
-            ax.scatter(X[-1], Y[-1], Z[-1], s = 100, 
+            ax.scatter(X[-1], Y[-1], Z[-1], s = 100,
                 fc = 'black', ec = sc.color, marker = '.', zorder = 3, label = sc.name)
 
         ax.legend()
@@ -399,7 +414,7 @@ class Simulation():
         # graticules.plot(ax=ax, color="lightgray", linewidth=0.5)
 
         countries.plot(ax = ax, color= 'gray', alpha = 0.3, edgecolor='black')
-        
+
 
         for sc in self.scs:
             LALN = sc.state_mat.to_LALN()
@@ -426,8 +441,8 @@ class Simulation():
 
 
 
-        ylabels = ['$B_{north}$', '$B_{east}$', '$B_{down}$', '$|\mathbf{B}|$']
-        
+        ylabels = ['$B_{north}$', '$B_{east}$', '$B_{down}$', '$|{B}|$']
+
         for sc in self.scs:
 
             LALN = sc.state_mat.to_LALN()
@@ -449,10 +464,10 @@ class Simulation():
 
 
 
-        fig.legend()    
+        fig.legend()
 
-        
-        
+
+
     def plot_XYZ(self):
 
         fig, axs = plt.subplots(nrows = 3, ncols = 1, figsize = [12, 6], sharex = True)
@@ -479,7 +494,7 @@ class Simulation():
 
         axs[0].legend(loc = 0)
 
-        
+
     def __earth_2d(self):
 
         R_e = 6371 #km
@@ -488,14 +503,14 @@ class Simulation():
         return earth
 
     def __earth_3d(self):
-        """ 
+        """
             __earth_3d:
             produces 3D wireplot state vector of Earth in the synodic frame
 
                 Args:
                     r (1x6 array): position of Earth in ndim synodic frame
 
-                Returns 
+                Returns
                     earth (1x6 array): Earth wireframe state vector
         """
 
@@ -508,10 +523,10 @@ class Simulation():
 
         earth = np.array([x, y, z])
 
-        return earth 
+        return earth
 
 
-def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.csv", store_data=False):
+def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.csv", store_data=False, GPS=False, RAM=False):
     '''
     Generate the magnetic field data for a given orbit
     If store_data is True, the magnetic field data is saved to a CSV file in the OUTPUT_DIR folder
@@ -526,15 +541,26 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
                 e - eccentricity [0, 1): how stretched the ellipse is, circle = 0
             Orient 2D ellipse in 3D:
                 i - inclination [deg]: angle between equator and orbit plane
+                    NOTE: bugs out halfway around orbit if 90 (b field x and y swap)
                 Om - right ascension (RA) of ascending node [deg]: angle between ascending node and non-rotating coordinate system of earth (geocentric equatorial coordinate system)
+                    NOTE: cannot be 0, also bugs out if 90
                 w - argument of perigee/periapsis [deg]: angle between ascending node and point of closest approach to earth (periapsis)
 
         total_time (float): total time of the simulation (hours)
         timestep (float): time step of the simulation (seconds)
         file_name (str): name of CSV file
+        store_data (bool): whether to create CSV and store data within
+        GPS (bool): whether to find and store GPS data (ECEF) or not
+        RAM (bool): whether to find and store RAM velocity vector (direction of travel) or not
 
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
+        if GPS:
+            return additional element:
+                GPS ( (3 x n) np.array): location for each time step in efec frame (km)
+        if RAM:
+            return additional element:
+                RAM ( (3 x n) np.array): RAM velocity vector for each step (km/s)
     '''
 
     # initialize simulation object (with time = current date and time)
@@ -549,7 +575,7 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
     # propogate and solve the simulation
     # resolution = timestep (seconds)
     sim.propogate(DT, resolution =  timestep)
-    
+
     # calculate b field based on GPS data from model
     sim.calc_B()
 
@@ -560,36 +586,90 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
     # convert to uT (microTesla)
     B_earth = B_field * 1e-3
 
+    if GPS:
+        # scs[0].state_mat.X gives x in ECI frame
+
+        # get x, y, z in ECEF frame (rotates with earth)
+        gps_x = sim.scs[0].state_mat.R_ECEF[:, 0]
+        gps_y = sim.scs[0].state_mat.R_ECEF[:, 1]
+        gps_z = sim.scs[0].state_mat.R_ECEF[:, 2]
+
+        gps_data = np.array(list(zip(gps_x, gps_y, gps_z)))
+
+    if RAM:
+        # extract orbital elements
+        # orbital_elements = sim.scs[0].state_mat.OE_
+        # convert to position/velocity (eci) using orb tools function
+        # pos_velocity = np.array([ot.calc_OE2RV(element) for element in orbital_elements])
+
+        # get position and velocity in eci frame
+        eci_pos = sim.scs[0].state_mat.R_
+        eci_vel = sim.scs[0].state_mat.V_
+        # get datetime objects for every step
+        times = sim.scs[0].state_mat.times
+        ecef = []
+
+        for i in range(len(eci_pos)):
+            # find pos and velocity in ecef frame
+            pos, vel = ot.calc_ECEF_R(eci_pos[i], eci_vel[i], times[i])
+            ecef.append(np.concatenate((pos, vel)))
+
+        # extract ecef velocity from array
+        ram_velocity = np.array([a[3:] for a in ecef])
+
     if store_data:
         # Get the directory of the current script
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        
+
         # Create OUTPUT_DIR as a subdirectory of the script location
         output_dir = os.path.join(script_dir, OUTPUT_DIR)
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Full path to output file
         output_path = os.path.join(output_dir, file_name)
-        
+
         # Save data to CSV
         with open(output_path, 'w') as f:
             # Write header with simulation parameters
             f.write(f"# f={OE_array[0]},a={OE_array[1]},e={OE_array[2]},i={OE_array[3]},Om={OE_array[4]},w={OE_array[5]},total_time={total_time},timestep={timestep}\n")
-            
-            # Write B-field data
-            np.savetxt(f, B_earth, delimiter=',', header='Bx,By,Bz', comments='')
-            
+
+            if GPS:
+                # combine b field and gps data
+                combined_data = np.hstack((B_earth, gps_data))
+                np.savetxt(f, combined_data, delimiter=',', header='Bx,By,Bz,X,Y,Z', comments='')
+            else:
+                # Write B-field data
+                np.savetxt(f, B_earth, delimiter=',', header='Bx,By,Bz', comments='')
+
         print(f"Data saved to {output_path}")
 
-    return B_earth
+    if RAM and not GPS:
+        return B_earth, ram_velocity
+    if GPS:
+        if RAM:
+            return B_earth, gps_data, ram_velocity
+        return B_earth, gps_data
+    else:
+        return B_earth
 
 
-def get_orbit_data(file_name):
+def get_orbit_data(file_name, oe=None, total_time=None, timestep=None, GPS=False):
     '''
     Get the magnetic field data from the specified CSV file in OUTPUT_DIR folder
+    and check orbital parameters against those in the CSV file.
 
     @params:
         file_name (str): name of the CSV file to get the data from
+        oe ( 1x6 array ): orbital elements of the spacecraft. 6 numbers to describe the shape and orientation of the orbit
+                f - true anomaly [deg]: angle between point closest to earth and current location
+                a - semi-major axis [km]: the distance from the center of an ellipse to the longer end of the ellipse=radius/altitude lol
+                e - eccentricity [0, 1): how stretched the ellipse is, circle = 0
+                i - inclination [deg]: angle between equator and orbit plane
+                Om - right ascension (RA) of ascending node [deg]: angle between ascending node and non-rotating coordinate system of earth (geocentric equatorial coordinate system)
+                w - argument of perigee/periapsis [deg]: angle between ascending node and point of closest approach to earth (periapsis)
+        total_time (float): total time for the orbit
+        timestep (float): timestep for the orbit
+        GPS (bool): whether GPS data is in csv or not
 
     @returns:
         B_fields ( (3 x n) np.array): magnetic field data for all n time steps (microTesla)
@@ -597,31 +677,76 @@ def get_orbit_data(file_name):
 
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     # Full path to output file
     output_path = os.path.join(script_dir, OUTPUT_DIR, file_name)
-    
-    B_fields = np.genfromtxt(output_path, delimiter=',')
 
-    # remove header
-    B_fields = B_fields[1:, :]
+    # Read the first few lines to get orbital elements, total time, and timestep
+    with open(output_path, 'r') as file:
+        header_lines = [file.readline().strip() for _ in range(3)]
 
-    return B_fields
+    # Parse the first line to get the orbital parameters
+    first_line = header_lines[0].split(',')
+    csv_orbital_elements = [
+        float(first_line[0].split('=')[1]),
+        float(first_line[1].split('=')[1]),
+        float(first_line[2].split('=')[1]),
+        float(first_line[3].split('=')[1]),
+        float(first_line[4].split('=')[1]),
+        float(first_line[5].split('=')[1])]
+
+    # Check if orbital elements match
+    if oe is not None:
+        for i, element in enumerate(oe):
+            if np.isclose(element, csv_orbital_elements[i]) == False:
+                raise ValueError(f"CSV has orbital elements: {csv_orbital_elements}.")
+
+    csv_total_time = float(first_line[6].split('=')[1])
+    csv_timestep = float(first_line[7].split('=')[1])
+
+    # Check if total time and timestep match
+    if total_time > csv_total_time:
+        raise ValueError(f"{total_time} is too long, CSV only has {csv_total_time} hours.")
+
+    if not timestep == csv_timestep:
+        raise ValueError(f"Timestep mismatch: Expected {timestep}, got {csv_timestep}.")
+
+    # read the signified data
+    if GPS:
+        data = np.genfromtxt(output_path, delimiter=',')
+
+        # extract magnetic field and gps data from csv
+        B_fields = data[1:, :3]
+        gps = data[1:, -3:]
+
+        return B_fields, gps
+    else:
+        B_fields = np.genfromtxt(output_path, delimiter=',')
+
+        # remove header
+        B_fields = B_fields[1:, :]
+
+        return B_fields
 
 
 if __name__ == '__main__':
-    '''
+
     oe = [121, 6_800, 0.0000922, 51, -10, 80]
-    total_time = 1
+    total_time = 1 / 60
     timestep = 1.0
     file_name = "test.csv"
-    store_data = True
+    store_data = False
+    generate_GPS = True
+    generate_RAM = True
 
-    generate_orbit_data(oe, total_time, timestep, file_name, store_data)
+    B_field, gps, ram = generate_orbit_data(oe, total_time, timestep, file_name, store_data, generate_GPS, generate_RAM)
 
-    print(get_orbit_data(file_name))
-
+    # print(gps)
+    print("ram: ", ram)
+    # print(get_orbit_data(file_name))
     '''
+
+
     # 3/21, 2022
     t0 = datetime.datetime(2022, 3, 21, 0, 0, 0)
     sim = Simulation(TIME = t0, mag_deg= 12)
@@ -656,9 +781,9 @@ if __name__ == '__main__':
     # total sim time, hours
     hours = 4
     DT = datetime.timedelta(hours = hours)
-    
+
     # time step, seconds
-    timestep = 20.0 
+    timestep = 20.0
     sim.propogate(DT, resolution = timestep)
 
     # calculate lat/long and height for each time step
@@ -688,12 +813,9 @@ if __name__ == '__main__':
     # GET CHANGE IN B-FIELD DATA FOR GOAT
     B_field = sim.scs[0].B_
 
-    print("B field: ", B_field)
-    # TODO: write a function to get B field data for all steps
-    #       in format [Bx, By, Bz] for each time step
-    #       instead of current format of every column being a time step
+    # print("B field: ", B_field)
 
-    time_array = sim.scs[0].state_mat.times 
+    time_array = sim.scs[0].state_mat.times
     time_array = time_array - datetime.datetime.min
 
     start = time_array[0].total_seconds()
@@ -730,5 +852,5 @@ if __name__ == '__main__':
     # np.savetxt('B_out.csv', (time_array, B_field[0, :] * 1e-3, B_field[1, :] * 1e-3, B_field[2, :] * 1e-3), delimiter = ',')
     plt.show()
 
-    
+    '''
 
