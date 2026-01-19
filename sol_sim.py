@@ -442,7 +442,6 @@ class Simulation():
 
 
         ylabels = ['$B_{north}$', '$B_{east}$', '$B_{down}$', '$|{B}|$']
-
         for sc in self.scs:
 
             LALN = sc.state_mat.to_LALN()
@@ -588,14 +587,12 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
 
     if GPS:
         # scs[0].state_mat.X gives x in ECI frame
-
         # get x, y, z in ECEF frame (rotates with earth)
         gps_x = sim.scs[0].state_mat.R_ECEF[:, 0]
         gps_y = sim.scs[0].state_mat.R_ECEF[:, 1]
         gps_z = sim.scs[0].state_mat.R_ECEF[:, 2]
 
         gps_data = np.array(list(zip(gps_x, gps_y, gps_z)))
-
     if RAM:
         # extract orbital elements
         # orbital_elements = sim.scs[0].state_mat.OE_
@@ -632,7 +629,6 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
         with open(output_path, 'w') as f:
             # Write header with simulation parameters
             f.write(f"# f={OE_array[0]},a={OE_array[1]},e={OE_array[2]},i={OE_array[3]},Om={OE_array[4]},w={OE_array[5]},total_time={total_time},timestep={timestep}\n")
-
             if GPS:
                 # combine b field and gps data
                 combined_data = np.hstack((B_earth, gps_data))
@@ -640,7 +636,6 @@ def generate_orbit_data(OE_array, total_time, timestep, file_name="b_field_data.
             else:
                 # Write B-field data
                 np.savetxt(f, B_earth, delimiter=',', header='Bx,By,Bz', comments='')
-
         print(f"Data saved to {output_path}")
 
     if RAM and not GPS:
@@ -705,10 +700,10 @@ def get_orbit_data(file_name, oe=None, total_time=None, timestep=None, GPS=False
     csv_timestep = float(first_line[7].split('=')[1])
 
     # Check if total time and timestep match
-    if total_time > csv_total_time:
+    if total_time is not None and total_time > csv_total_time:
         raise ValueError(f"{total_time} is too long, CSV only has {csv_total_time} hours.")
 
-    if not timestep == csv_timestep:
+    if timestep is not None and not timestep == csv_timestep:
         raise ValueError(f"Timestep mismatch: Expected {timestep}, got {csv_timestep}.")
 
     # read the signified data
@@ -730,7 +725,6 @@ def get_orbit_data(file_name, oe=None, total_time=None, timestep=None, GPS=False
 
 
 if __name__ == '__main__':
-
     oe = [121, 6_800, 0.0000922, 51, -10, 80]
     total_time = 1 / 60
     timestep = 1.0
@@ -745,7 +739,6 @@ if __name__ == '__main__':
     print("ram: ", ram)
     # print(get_orbit_data(file_name))
     '''
-
 
     # 3/21, 2022
     t0 = datetime.datetime(2022, 3, 21, 0, 0, 0)
